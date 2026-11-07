@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1d4f91">
+<title>Istanbul on foot · two-continent loop</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1d2433; --muted:#6a6f7b; --cream:#f5efe3; --paper:#fffaf2; --line:#e5dac6;
+  --blue:#1d4f91; --turq:#14898a; --terra:#c0502b; --ochre:#a87512; --slate:#56606f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--cream);color:var(--ink);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#mapwrap{position:relative;height:46vh;height:46dvh;flex:none;transition:height .25s ease}
+#app.bigmap #mapwrap{height:80vh;height:80dvh}
+#map{position:absolute;inset:0;background:#e8e4da}
+.band{height:6px;flex:none;background:
+  repeating-linear-gradient(90deg,var(--blue) 0 14px,var(--turq) 14px 20px,var(--blue) 20px 34px,var(--terra) 34px 38px)}
+#panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+/* map buttons */
+.mapbtns{position:absolute;right:10px;top:10px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.mapbtns button{width:42px;height:42px;border-radius:12px;border:0;background:rgba(255,250,242,.96);
+  box-shadow:0 2px 8px rgba(29,36,51,.25);display:grid;place-items:center;color:var(--ink);cursor:pointer;padding:0}
+.mapbtns button svg{width:22px;height:22px}
+.mapbtns button.on{background:var(--blue);color:#fff}
+#toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;background:rgba(29,36,51,.88);color:#fff;
+  padding:6px 12px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* status */
+#status{position:sticky;top:0;z-index:10;background:var(--paper);border-bottom:1px solid var(--line);
+  padding:10px 14px;display:flex;gap:10px;align-items:center;cursor:pointer}
+#status .dot{width:12px;height:12px;border-radius:50%;background:#b9b3a6;flex:none;box-shadow:0 0 0 3px rgba(185,179,166,.25)}
+#status.live .dot{background:#2a7bf6;box-shadow:0 0 0 3px rgba(42,123,246,.25)}
+#status.off .dot{background:var(--terra);box-shadow:0 0 0 3px rgba(192,80,43,.25)}
+#status .st-main{font-weight:600;font-size:14px}
+#status .st-sub{font-size:12.5px;color:var(--muted)}
+.progress{height:4px;background:var(--line);border-radius:4px;margin-top:5px;overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--turq),var(--blue));transition:width .4s}
+
+header.intro{padding:18px 16px 6px}
+h1{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:28px;line-height:1.1;margin:0 0 6px;letter-spacing:-.01em}
+.lede{margin:0 0 10px;color:#3a4150}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;color:#fff}
+.note{font-size:13px;background:#fff3d6;border:1px solid #f0dca8;border-radius:10px;padding:8px 10px;margin:10px 0 4px}
+
+/* sections */
+.sec{margin:14px 10px 0;background:var(--paper);border-radius:16px;border:1px solid var(--line);overflow:hidden;scroll-margin-top:64px}
+.sechead{display:flex;gap:12px;align-items:center;padding:12px 14px 6px}
+.secnum{width:34px;height:34px;border-radius:10px;background:var(--c);color:#fff;display:grid;place-items:center;
+  font-family:Fraunces,Georgia,serif;font-weight:700;font-size:17px;flex:none}
+.sec.ferry .secnum{border-radius:50%}
+.sechead h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:18.5px;line-height:1.2;margin:0}
+.sechead .meta{font-size:12.5px;color:var(--muted)}
+.sec.here{border-color:var(--c);box-shadow:0 0 0 2px var(--c)}
+.sec.here .sechead h2::after{content:"  · you're here";font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--c)}
+.secdesc{margin:0;padding:2px 14px 10px;color:#3a4150;font-size:14px}
+.cards{border-top:1px solid var(--line)}
+
+details.card{border-bottom:1px solid var(--line);scroll-margin-top:64px}
+details.card:last-child{border-bottom:0}
+details.card summary{list-style:none;display:flex;gap:10px;align-items:center;padding:10px 14px;cursor:pointer}
+details.card summary::-webkit-details-marker{display:none}
+.pnum{width:26px;height:26px;border-radius:50%;background:var(--k);color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;flex:none}
+.card.k-curio .pnum{border-radius:6px;transform:rotate(45deg)}
+.card.k-curio .pnum span{transform:rotate(-45deg)}
+.ptitle{flex:1;min-width:0;font-weight:600;font-size:14.5px;line-height:1.3}
+.ptitle small{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:1px}
+.badge{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--k);flex:none}
+.chev{flex:none;width:16px;height:16px;color:#a39c8f;transition:transform .2s}
+details[open] .chev{transform:rotate(180deg)}
+details[open] summary{background:#fbf4e6}
+.body{padding:2px 14px 14px 50px;font-size:14.5px;color:#2a3140}
+.body p{margin:8px 0}
+.body .tip{background:#eef6f5;border-left:3px solid var(--turq);padding:7px 10px;border-radius:0 8px 8px 0;font-size:13.5px}
+.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.actions button,.actions a{font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;border:1px solid var(--line);
+  background:#fff;color:var(--blue);text-decoration:none;cursor:pointer}
+.actions .ondist{font-size:12.5px;color:var(--muted);align-self:center}
+
+footer{padding:18px 16px 40px;font-size:12px;color:var(--muted)}
+footer p{margin:6px 0}
+
+/* map markers */
+.pin{width:24px;height:24px;border-radius:50%;background:var(--k);color:#fff;border:2px solid #fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.35);display:grid;place-items:center;font:600 11px Inter,sans-serif}
+.pin.k-curio{border-radius:5px;transform:rotate(45deg)}
+.pin.k-curio span{transform:rotate(-45deg)}
+.me{width:18px;height:18px;border-radius:50%;background:#2a7bf6;border:3px solid #fff;box-shadow:0 0 0 0 rgba(42,123,246,.6);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(42,123,246,.55)}70%{box-shadow:0 0 0 16px rgba(42,123,246,0)}100%{box-shadow:0 0 0 0 rgba(42,123,246,0)}}
+.leaflet-popup-content{font:14px/1.4 Inter,sans-serif;margin:10px 12px}
+.leaflet-popup-content b{font-family:Fraunces,Georgia,serif;font-size:15px}
+.pop-more{margin-top:6px;font:600 13px Inter,sans-serif;color:var(--blue);background:none;border:0;padding:0;cursor:pointer}
+.ferrylabel{background:rgba(255,250,242,.92);border-radius:10px;padding:2px 7px;font:600 11px Inter,sans-serif;color:#1f5fb0;white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,.2)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="mapwrap">
+    <div id="map"></div>
+    <div id="toast"></div>
+    <div class="mapbtns">
+      <button id="btnLocate" title="Follow my location" aria-label="Follow my location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+      </button>
+      <button id="btnFit" title="Show whole route" aria-label="Show whole route">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+      <button id="btnLayer" title="Change map style" aria-label="Change map style">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 13 10 5 10-5"/></svg>
+      </button>
+      <button id="btnSize" title="Bigger map" aria-label="Bigger map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="band"></div>
+  <div id="panel">
+    <div id="status" title="Jump to where you are">
+      <div class="dot"></div>
+      <div style="flex:1;min-width:0">
+        <div class="st-main">Finding you…</div>
+        <div class="st-sub">Allow location access to see yourself on the route</div>
+        <div class="progress"><i></i></div>
+      </div>
+    </div>
+
+    <header class="intro">
+      <h1>Istanbul on foot</h1>
+      <p class="lede">A two-continent loop from Karaköy: the old city, the Golden Horn's Greek and Jewish quarters, a ferry to Asia, the Üsküdar–Kadıköy shoreline and a ferry back. <span id="totals"></span></p>
+      <div class="chips">
+        <span class="chip" style="background:var(--blue)">● Classic sights</span>
+        <span class="chip" style="background:var(--terra)">◆ Curios &amp; easy-to-miss</span>
+        <span class="chip" style="background:var(--ochre)">● Food &amp; drink</span>
+        <span class="chip" style="background:var(--slate)">● Practical</span>
+      </div>
+      <div class="note"><b>Sunset ≈ 16:50.</b> Aim to be on the ferry to Üsküdar by about 15:00 so you reach Moda for it. Times below are a guide only. Tap any card to expand it.</div>
+    </header>
+
+    <div id="sections"></div>
+
+    <footer>
+      <p id="routenote">Snapping the route to streets…</p>
+      <p>Map tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © CARTO, Esri. Walking routes from the FOSSGIS OSRM service.</p>
+      <p>Opening hours and access change, so check anything that matters before you detour for it.</p>
+    </footer>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+/* ------------------------------------------------------------------ DATA */
+const KINDS = {
+  classic:   {label:'Classic',   c:'#1d4f91'},
+  curio:     {label:'Curio',     c:'#c0502b'},
+  food:      {label:'Food',      c:'#a87512'},
+  practical: {label:'Practical', c:'#56606f'}
+};
+
+const SECTIONS = [
+{
+  id:'s1', title:'Karaköy → Galata Bridge → Eminönü', time:'from 08:00', color:'#1d4f91', mode:'walk',
+  desc:'Cross the Golden Horn on the bridge\'s upper deck, then dive into the spice-and-pigeon bustle of Eminönü.',
+  via:[[41.0227,28.9769],[41.0217,28.9760],[41.0210,28.9738],[41.0178,28.9724],[41.0170,28.9713],[41.0168,28.9700],[41.0176,28.9687]],
+  places:[
+    {name:'Galata Bridge', kind:'classic', lat:41.0195, lng:28.9730,
+     short:'Anglers above, fish restaurants below',
+     body:'There has been a bridge here since 1845; the current one opened in 1994. Walk the upper deck and weave between the fishing lines. The buckets of tiny istavrit (horse mackerel) often end up fried at stalls nearby.\n\nCurio: in 1502 Leonardo da Vinci sent Sultan Bayezid II a design for a single 240-metre span here. It was dismissed as impossible. A scaled-down version was finally built as a footbridge in Ås, Norway, in 2001.'},
+    {name:'Balık ekmek boats', kind:'food', lat:41.0172, lng:28.9734,
+     short:'Grilled mackerel sandwiches from rocking boats',
+     body:'On the Eminönü waterfront, gaudily decorated boats grill mackerel fillets and stuff them into bread with onion and salad. It\'s cheap and messy and very Istanbul.',
+     tip:'Look out for the carts selling turşu suyu: neon-pink pickle juice, drunk as a chaser.'},
+    {name:'New Mosque (Yeni Cami)', kind:'classic', lat:41.0170, lng:28.9713,
+     short:'Took 66 years to finish',
+     body:'Begun in 1597 by Safiye Sultan and abandoned when her son died, it was finally completed in 1665 by another queen mother, Turhan Hatice Sultan. "New" only by Istanbul standards. The forecourt is pigeon central.'},
+    {name:'Spice Bazaar (Mısır Çarşısı)', kind:'classic', lat:41.0165, lng:28.9703,
+     short:'The "Egyptian Bazaar", built to fund the mosque',
+     body:'This L-shaped covered market was built alongside the New Mosque in the 1660s, and its rents paid for the mosque\'s upkeep. The name comes from the Egyptian revenues that originally financed it.',
+     tip:'The streets just west and south (Hasırcılar Cd) are where locals actually shop. Kurukahveci Mehmet Efendi has been roasting coffee on the corner since 1871, and you can follow the queue and the smell.'},
+    {name:'Rüstem Paşa Mosque', kind:'curio', lat:41.0177, lng:28.9688,
+     short:'A tiled jewel box hidden above a row of shops',
+     body:'Sinan built it in the early 1560s for Rüstem Pasha, Süleyman\'s grand vizier and son-in-law. He raised it on a platform so the shops underneath could pay for it. The entrance is just a narrow stairway off the street, and most people walk straight past.\n\nInside, almost every surface is İznik tile, including tulip and carnation designs that are rare even by İznik standards. Many people rate them the best tiles in the city, and there\'s a fraction of the crowd.'}
+  ]
+},
+{
+  id:'s2', title:'Sirkeci → Sultanahmet', time:'~08:45', color:'#7a3b86', mode:'walk',
+  desc:'Up past the Orient Express station to the Byzantine and Ottoman heart of the city. Go early: the crowds build fast.',
+  via:[[41.0176,28.9687],[41.0163,28.9712],[41.0158,28.9748],[41.0149,28.9768],[41.0128,28.9790],[41.0104,28.9796],[41.0087,28.9790],[41.0084,28.9779],[41.0074,28.9765],[41.0060,28.9754],[41.0050,28.9747],[41.0064,28.9748],[41.0080,28.9752]],
+  places:[
+    {name:'Sirkeci Station', kind:'curio', lat:41.0150, lng:28.9770,
+     short:'The eastern terminus of the Orient Express',
+     body:'Opened in 1890 and designed by the German architect August Jasmund in an Orientalist style, with stained glass and a clock tower. This is where passengers from Paris stepped off. A small railway museum inside has Orient Express crockery and old equipment.'},
+    {name:'Hagia Sophia', kind:'classic', lat:41.0086, lng:28.9802,
+     short:'Built in 537: church, mosque, museum and mosque again',
+     body:'For nearly a thousand years this was the largest cathedral in the world. Since 2024, foreign visitors pay and are routed to the upper galleries only, which is handy, because that\'s where the curio is.\n\nCurio: on the marble parapet of the upper gallery, a Viking scratched runes in the 9th century. They read roughly "Halfdan carved these runes", and they\'re now under a protective cover. A second runic graffito was found in 1975.',
+     tip:'If the queue is huge, you can visit the Ottoman royal tombs in the courtyard to the south for free. Selim II\'s has superb tiles.'},
+    {name:'Milion', kind:'curio', lat:41.0086, lng:28.9768,
+     short:'Mile zero of the Byzantine Empire',
+     body:'This stubby marble pillar near the Basilica Cistern entrance is all that remains of a monumental arch. Every road distance in the empire was measured from it, making it the eastern twin of Rome\'s Golden Milestone. Almost nobody stops.'},
+    {name:'Basilica Cistern', kind:'classic', lat:41.0084, lng:28.9779,
+     short:'Justinian\'s underground forest of 336 columns',
+     body:'A 6th-century reservoir that once held water for the Great Palace. Two of the column bases are recycled Medusa heads, one on its side and one upside down. Nobody quite knows why.',
+     tip:'Tickets are pricey and queues long. The smaller Şerefiye (Theodosius) Cistern, five minutes west on Piyer Loti Cd, is cheaper and quieter.'},
+    {name:'Blue Mosque (Sultan Ahmed)', kind:'classic', lat:41.0054, lng:28.9768,
+     short:'Six minarets and 20,000 İznik tiles',
+     body:'Built in 1609–16 for the 19-year-old Ahmed I. The story goes that its six minarets caused a scandal because only Mecca had six, so the sultan paid for a seventh there. Entry is free, but the mosque closes to visitors around prayer times. Cover shoulders and knees.'},
+    {name:'Hippodrome', kind:'curio', lat:41.0059, lng:28.9752,
+     short:'A 3,500-year-old obelisk and a snake from Delphi',
+     body:'Constantinople\'s chariot-racing track is now a long park, with three oddities in a row:\n\nObelisk of Theodosius: carved for Thutmose III around 1450 BC at Karnak and re-erected here in 390 AD. Its marble base shows the emperor watching the races.\n\nSerpent Column: the bronze stump of a monument cast from captured Persian weapons after the Battle of Plataea (479 BC). It stood at Delphi until Constantine brought it here.\n\nWalled Obelisk: once sheathed in gilded bronze, which the Crusaders stripped off in 1204.',
+     tip:'The domed fountain at the north end was a gift from Kaiser Wilhelm II in 1900.'},
+    {name:'Sokollu Mehmed Paşa Mosque', kind:'curio', lat:41.0036, lng:28.9714,
+     short:'Detour: fragments of the Kaaba\'s Black Stone',
+     body:'A five-minute walk downhill from the Hippodrome. Sinan built this small mosque in 1571–72, and it has some of the finest İznik tilework anywhere. Tiny slivers of the Black Stone from Mecca are set above the entrance, the mihrab and the minbar.',
+     tip:'Opening can be irregular. Carry on downhill to Little Hagia Sophia (530s), the trial run for the big one.'}
+  ]
+},
+{
+  id:'s3', title:'Divanyolu → Grand Bazaar → Süleymaniye', time:'~10:15', color:'#c0502b', mode:'walk',
+  desc:'Along the old imperial avenue, through the covered bazaar and up to Sinan\'s masterpiece on the city\'s third hill.',
+  via:[[41.0080,28.9752],[41.0087,28.9718],[41.0102,28.9709],[41.0107,28.9690],[41.0104,28.9665],[41.0101,28.9655],[41.0118,28.9668],[41.0128,28.9674],[41.0145,28.9660],[41.0158,28.9651]],
+  places:[
+    {name:'Column of Constantine (Çemberlitaş)', kind:'curio', lat:41.0087, lng:28.9716,
+     short:'The founding monument of Constantinople, 330 AD',
+     body:'A blackened porphyry column held together with iron hoops, which give it its Turkish name, "the Hooped Stone". Constantine set it up when he made the city his capital. Legend says he buried a hoard of relics underneath it, including Noah\'s adze, the baskets from the loaves and fishes, and the Palladium of Troy.'},
+    {name:'Grand Bazaar', kind:'classic', lat:41.0107, lng:28.9681,
+     short:'60-odd covered streets, trading since the 1460s',
+     body:'Mehmed II founded it soon after the conquest, and it has grown to around 4,000 shops. It\'s open today and closed on Sundays.',
+     tip:'Get off the main drag. The hans (old caravanserais) around the edges are still working workshops, with silversmiths, polishers and weavers.'},
+    {name:'Sahaflar Çarşısı', kind:'curio', lat:41.0102, lng:28.9654,
+     short:'The old book bazaar, on the site of Byzantium\'s paper market',
+     body:'A shady courtyard of booksellers between the bazaar\'s Beyazıt gate and the Beyazıt Mosque. In Byzantine times this was the Chartoprateia, the paper and book market. The bust in the middle is of İbrahim Müteferrika, who ran the first Ottoman printing press from 1727.'},
+    {name:'Büyük Valide Han', kind:'curio', lat:41.0127, lng:28.9672,
+     short:'A crumbling 1651 caravanserai with a famous roof',
+     body:'Built by Kösem Sultan, one of the most powerful women in Ottoman history. Its three courtyards are now a warren of workshops, and you can sometimes hear looms clattering. The rooftop panorama (and the Skyfall motorbike chase) made it famous.',
+     tip:'Roof access is unofficial and comes and goes. Sometimes someone will offer to take you up for a tip.'},
+    {name:'Süleymaniye Mosque', kind:'classic', lat:41.0160, lng:28.9640,
+     short:'Sinan\'s 1550s masterpiece, with the best view in the old city',
+     body:'Built for Süleyman the Magnificent in 1550–57. Its scale and calm put the Blue Mosque in perspective. Süleyman and his wife Hürrem are buried in tombs in the garden.\n\nCurio: the story goes that Sinan designed the airflow so that soot from the thousands of oil lamps collected in a chamber above the courtyard entrance, where it was scraped off to make ink.',
+     tip:'The garden terrace behind the mosque looks straight down the Golden Horn.'},
+    {name:'Beans on "Addicts\' Street"', kind:'food', lat:41.0158, lng:28.9632,
+     short:'Kuru fasulye on the old Tiryakiler Çarşısı',
+     body:'The row of eateries facing the mosque was nicknamed the Addicts\' Market after the coffee (and reputedly opium) dens that once lined it. Erzincanlı Ali Baba has served white-bean stew with rice and pickles here since 1924. It makes a good, quick, very local lunch.'},
+    {name:'Tomb of Mimar Sinan', kind:'curio', lat:41.0172, lng:28.9648,
+     short:'The great architect\'s own tiny tomb',
+     body:'On a wedge-shaped corner plot just outside the mosque complex is a modest open tomb, which Sinan designed for himself. He died in 1588, having built more than 300 structures across the empire. It\'s an understated end for the man who reshaped the skyline.'}
+  ]
+},
+{
+  id:'s4', title:'Vefa → Zeyrek → Fener & Balat', time:'~11:45', color:'#14898a', mode:'walk',
+  desc:'Leave the tourists behind. Pass a Roman aqueduct and Byzantine monasteries, then reach the old Greek and Jewish quarters on the Golden Horn. This is the place for lunch.',
+  via:[[41.0158,28.9651],[41.0170,28.9646],[41.0163,28.9610],[41.0155,28.9584],[41.0160,28.9560],[41.0193,28.9575],[41.0225,28.9582],[41.0250,28.9585],[41.0272,28.9548],[41.0289,28.9522],[41.0291,28.9505],[41.0295,28.9481],[41.0300,28.9470],[41.0318,28.9463],[41.0334,28.9458],[41.0330,28.9480],[41.0317,28.9496]],
+  places:[
+    {name:'Vefa Bozacısı', kind:'food', lat:41.0155, lng:28.9584,
+     short:'Fermented millet drink, served since 1876',
+     body:'Boza is thick, tangy and slightly sour, dusted with cinnamon and eaten with roasted chickpeas. It\'s a winter drink, so you\'re here at the right time. The glass Atatürk drank from in 1937 is displayed in a case on the wall.'},
+    {name:'Valens Aqueduct', kind:'classic', lat:41.0160, lng:28.9558,
+     short:'Roman, finished in 368 AD, still standing over the traffic',
+     body:'Almost a kilometre of double arches survives. It carried water into the city for some 1,400 years, through the Byzantine and Ottoman eras alike. Today a six-lane boulevard runs through it.'},
+    {name:'Zeyrek Mosque (Pantokrator)', kind:'curio', lat:41.0197, lng:28.9577,
+     short:'A 12th-century Byzantine imperial monastery',
+     body:'Built in 1118–36 by the Komnenos dynasty as a monastery and family mausoleum, it\'s one of the largest surviving Byzantine churches after Hagia Sophia. It became a mosque after 1453. The surrounding lanes of wooden Ottoman houses are part of the UNESCO-listed historic area.'},
+    {name:'Ecumenical Patriarchate', kind:'curio', lat:41.0292, lng:28.9517,
+     short:'The welded-shut gate of Orthodoxy\'s headquarters',
+     body:'This has been the seat of the Ecumenical Patriarch, the "first among equals" of Orthodox Christianity, since 1601. The main gate is painted black and has been welded shut since 1821, when Patriarch Gregory V was hanged from it at the outbreak of the Greek War of Independence. Visitors use the side entrance.',
+     tip:'The church of St George is open roughly 08:00–16:00. Modest dress is expected.'},
+    {name:'The "Red Castle"', kind:'curio', lat:41.0293, lng:28.9496,
+     short:'Phanar Greek Orthodox College',
+     body:'This hulking red-brick building from 1881–83 looms over Fener like a fortress. The school itself traces its roots back to 1454, making it one of the oldest in the city. It\'s best seen from the lanes below.'},
+    {name:'St Mary of the Mongols', kind:'curio', lat:41.0296, lng:28.9479,
+     short:'The only Byzantine church never turned into a mosque',
+     body:'Founded by Maria Palaiologina, an emperor\'s daughter who was sent to marry the Mongol Ilkhan Abaqa. She returned a widow and became a nun. After 1453, a decree of Mehmed II let the Greeks keep it, and it has been a church ever since.',
+     tip:'Opening is irregular. If the gate is shut, try ringing the bell.'},
+    {name:'Balat streets', kind:'classic', lat:41.0302, lng:28.9472,
+     short:'Painted houses, stair-streets and a real neighbourhood',
+     body:'Kiremit Caddesi\'s colourful houses and the Merdivenli Yokuş stair-street are the photogenic bit. Wander the side lanes for the actual neighbourhood: laundry lines, tea houses and antique dealers. This was historically a Jewish, Greek and Armenian quarter.'},
+    {name:'Ahrida Synagogue', kind:'curio', lat:41.0336, lng:28.9461,
+     short:'Istanbul\'s oldest synagogue, with a ship-shaped pulpit',
+     body:'Founded before 1453 by Jews from Ohrid, in today\'s North Macedonia. Its bimah is shaped like a ship\'s prow. It\'s said to represent Noah\'s Ark, or the Ottoman ships that brought Sephardic refugees from Spain in 1492.',
+     tip:'Visits are by prior arrangement only, so expect to see just the outside.'},
+    {name:'Bulgarian Iron Church (St Stephen)', kind:'curio', lat:41.0316, lng:28.9495,
+     short:'A whole church prefabricated in Vienna',
+     body:'The cast-iron parts were made in Vienna, shipped down the Danube and across the Black Sea, and bolted together here by 1898. It\'s a defiant symbol of the Bulgarian church\'s break from the Greek Patriarchate in 1870, which is a few hundred metres down the road. Restored and reopened in 2018.'},
+    {name:'Chora (Kariye)', kind:'classic', lat:41.0312, lng:28.9391,
+     short:'Detour: some of the finest Byzantine mosaics anywhere',
+     body:'About 1 km uphill from Balat. Its 14th-century mosaics and frescoes, including a stunning Anastasis, are among the high points of Byzantine art. It reopened as a mosque in 2024, and the mosaics in the outer halls are visible.',
+     tip:'Allow 45 minutes or more for the round trip. Only worth it if you\'re on time.'}
+  ]
+},
+{
+  id:'s5', title:'Golden Horn shore → Eminönü', time:'~14:00', color:'#6b7d2a', mode:'walk',
+  desc:'A flat stroll back along the waterfront parks to the ferry. If you\'re running late, the shore road has buses towards Eminönü.',
+  via:[[41.0317,28.9496],[41.0300,28.9525],[41.0275,28.9555],[41.0252,28.9590],[41.0225,28.9622],[41.0200,28.9665],[41.0183,28.9700],[41.0175,28.9725],[41.0177,28.9757]],
+  places:[
+    {name:'Fener / Balat ferry piers', kind:'practical', lat:41.0300, lng:28.9527,
+     short:'Shortcut: the Golden Horn ferry',
+     body:'The Haliç (Golden Horn) line stops at Fener and Balat and continues to Karaköy and Üsküdar. That would replace this walk and the next ferry in one scenic hop. Boats are infrequent, though, so check the Şehir Hatları timetable or ask at the pier.'}
+  ]
+},
+{
+  id:'s6', title:'Ferry: Eminönü → Üsküdar', time:'~14:45', color:'#2b6fd0', mode:'ferry', ferryMins:20,
+  desc:'Europe to Asia in about 20 minutes. Tap on with an Istanbulkart. Boats leave every 15–20 minutes.',
+  via:[[41.0177,28.9757],[41.0185,28.9830],[41.0215,28.9960],[41.0250,29.0080],[41.0272,29.0138]],
+  places:[
+    {name:'Crossing the Bosphorus', kind:'classic', lat:41.0177, lng:28.9757,
+     short:'Tea, simit and gulls',
+     body:'Grab a tulip glass of çay from the onboard vendor and a simit (sesame bread ring). The gulls that trail every ferry will happily take some off your hands at the stern.',
+     tip:'As you pull out, look right: Topkapı Palace sits on Seraglio Point. Then the Maiden\'s Tower appears ahead to the right.'}
+  ]
+},
+{
+  id:'s7', title:'Üsküdar → Salacak → Harem → Kadıköy', time:'~15:10', color:'#d17a22', mode:'walk',
+  desc:'The Asian shoreline: Sinan mosques by the water, the best view back to the old city, and Crimean War history on the way to Kadıköy.',
+  via:[[41.0272,29.0138],[41.0265,29.0152],[41.0258,29.0130],[41.0249,29.0108],[41.0225,29.0080],[41.0200,29.0075],[41.0165,29.0090],[41.0120,29.0105],[41.0080,29.0130],[41.0045,29.0165],[41.0005,29.0185],[40.9975,29.0195],[40.9945,29.0215],[40.9928,29.0225]],
+  places:[
+    {name:'Mihrimah Sultan Mosque', kind:'classic', lat:41.0267, lng:29.0156,
+     short:'Sinan\'s 1548 mosque on the Üsküdar pier',
+     body:'Built for Süleyman\'s daughter Mihrimah and raised on a terrace above the square.\n\nLegend: Sinan was supposedly in love with her. Her two mosques, this one and another at Edirnekapı on the far side of the city, are said to be aligned so that on her birthday the sun sets behind one as the moon rises over the other. It\'s lovely and almost certainly untrue.'},
+    {name:'Şemsi Paşa Mosque', kind:'curio', lat:41.0250, lng:29.0112,
+     short:'Sinan\'s tiniest gem, practically in the sea',
+     body:'A small mosque and tomb from 1580, set right on the water\'s edge. It\'s one of the most charming of Sinan\'s small works and easy to miss on the way to Salacak.'},
+    {name:'Maiden\'s Tower & Salacak', kind:'classic', lat:41.0211, lng:29.0041,
+     short:'A tower on a rock, and the best view back to Europe',
+     body:'There has been a tower on this islet since Byzantine times. The current building is largely 18th-century, and it reopened in 2023 after restoration. In the legend, a sultan is told his daughter will die of a snakebite, so he locks her in the tower, and the snake arrives in a basket of fruit. Its Western name, Leander\'s Tower, borrows a Greek myth that actually happened at the Dardanelles.',
+     tip:'The Salacak shoreline has tea gardens with a full panorama: Topkapı, Hagia Sophia, the Blue Mosque and Süleymaniye, all in a row.'},
+    {name:'Selimiye Barracks', kind:'curio', lat:41.0058, lng:29.0142,
+     short:'Where Florence Nightingale worked',
+     body:'This enormous barracks served as the British hospital during the Crimean War, and Nightingale worked here in 1854–56. Her rooms in one corner tower are a small museum. The building is still military, so visits need permission arranged in advance; today it\'s an outside view only.'},
+    {name:'Haidar Pasha Cemetery', kind:'curio', lat:41.0012, lng:29.0178,
+     short:'A quiet British military cemetery',
+     body:'Graves of soldiers who died in the Scutari hospitals during the Crimean War, along with WWI and later burials. There\'s also a granite memorial by Marochetti from 1857. It\'s an unexpected patch of English-style calm.',
+     tip:'The gate isn\'t obvious, and you may need to ring or ask.'},
+    {name:'Haydarpaşa Station', kind:'curio', lat:40.9968, lng:29.0193,
+     short:'A German castle at the end of the Baghdad Railway',
+     body:'Built in 1908 by German architects as the terminus of the Berlin–Baghdad railway project. It sits on the water like a Rhineland fortress. It has been out of mainline use and under restoration for years, and excavations in front have turned up the harbour of ancient Chalcedon.'}
+  ]
+},
+{
+  id:'s8', title:'Kadıköy & Moda', time:'~16:15', color:'#b03a6b', mode:'walk',
+  desc:'The Asian side\'s liveliest district: market lanes, then the Moda shoreline for sunset over the Sea of Marmara.',
+  via:[[40.9928,29.0225],[40.9910,29.0245],[40.9900,29.0262],[40.9885,29.0275],[40.9873,29.0300],[40.9850,29.0290],[40.9825,29.0270],[40.9803,29.0262],[40.9830,29.0245],[40.9870,29.0240],[40.9905,29.0232],[40.9928,29.0222]],
+  places:[
+    {name:'Chalcedon, the "City of the Blind"', kind:'curio', lat:40.9915, lng:29.0240,
+     short:'Older than Byzantium, and mocked for it',
+     body:'Kadıköy is ancient Chalcedon, founded about 17 years before Byzantium across the water. Herodotus records the Persian general Megabazus saying its founders must have been blind to pick this spot when the far better site opposite was free. Later it hosted the Council of Chalcedon (451), which split Christianity over the nature of Christ.'},
+    {name:'Kadıköy market lanes', kind:'food', lat:40.9903, lng:29.0255,
+     short:'Fishmongers, pickle shops, meze counters',
+     body:'Graze through the pedestrian streets. Çiya Sofrası serves regional Anatolian dishes you won\'t find elsewhere, and it\'s a good place to point at things. Baylan is an old-school patisserie founded in the 1920s.',
+     tip:'The stuffed mussels (midye dolma) sold everywhere are shellfish, so skip those.'},
+    {name:'Süreyya Opera House', kind:'curio', lat:40.9873, lng:29.0302,
+     short:'A 1927 Art Deco theatre that spent decades as a cinema',
+     body:'Built by Süreyya Pasha and inspired by the Théâtre des Champs-Élysées in Paris, it was the Asian side\'s first purpose-built music theatre. It ended up as a cinema and was restored as an opera house in 2007. Look up at the façade on Bahariye Caddesi.'},
+    {name:'Moda shoreline', kind:'classic', lat:40.9800, lng:29.0262,
+     short:'Sunset over the Marmara',
+     body:'Locals sit on the rocks and grass with tea and sunflower seeds, and cats are everywhere. The sun goes down over the Sea of Marmara with the old city\'s silhouette off to the right. Sunset is about 16:50.'},
+    {name:'Moda nostalgic tram', kind:'curio', lat:40.9840, lng:29.0283,
+     short:'A heritage tram loop, if your legs need a rest',
+     body:'Since 2003, old-style trams have trundled one-way around Moda and back to the centre of Kadıköy. It\'s cheap with an Istanbulkart and a good way to get back to the pier.'}
+  ]
+},
+{
+  id:'s9', title:'Ferry: Kadıköy → Karaköy', time:'~17:30', color:'#2b6fd0', mode:'ferry', ferryMins:20,
+  desc:'Back to Europe after dark, with the skyline lit up. You land a few steps from where you started.',
+  via:[[40.9928,29.0222],[40.9990,29.0150],[41.0080,29.0000],[41.0175,28.9880],[41.0205,28.9800],[41.0218,28.9783]],
+  places:[
+    {name:'Night crossing', kind:'classic', lat:40.9935, lng:29.0212,
+     short:'The same view as the morning, lit up',
+     body:'Sit on the right-hand side for the floodlit mosques and Topkapı. Boats run frequently into the evening.'}
+  ]
+},
+{
+  id:'s10', title:'Evening: Galata → Pera → Taksim', time:'optional', color:'#3b3f8f', mode:'walk',
+  desc:'If you have anything left in your legs, go uphill from Karaköy through Galata to İstiklal. Taksim has the metro if you need it.',
+  via:[[41.0218,28.9783],[41.0228,28.9775],[41.0234,28.9762],[41.0243,28.9750],[41.0247,28.9743],[41.0256,28.9741],[41.0272,28.9740],[41.0285,28.9742],[41.0294,28.9745],[41.0310,28.9752],[41.0318,28.9742],[41.0325,28.9765],[41.0343,28.9783],[41.0369,28.9850]],
+  places:[
+    {name:'Karaköy Güllüoğlu', kind:'food', lat:41.0231, lng:28.9778,
+     short:'Baklava in Karaköy since 1949',
+     body:'Arguably the city\'s most famous baklava shop. Try the pistachio, or the söbiyet (cream-filled), with tea. Eat in, standing at the counter.'},
+    {name:'Underground Mosque (Yeraltı Camii)', kind:'curio', lat:41.0234, lng:28.9762,
+     short:'A mosque in a Byzantine cellar',
+     body:'A low, pillared vault turned into a mosque in 1757. It\'s believed to be part of the Byzantine castle of Galata, the fortress that anchored the great chain stretched across the Golden Horn to keep enemy fleets out. Inside are the tombs of two Arab warriors said to have died in the 7th–8th-century sieges.'},
+    {name:'Bankalar Caddesi & SALT Galata', kind:'curio', lat:41.0243, lng:28.9750,
+     short:'The Ottoman Wall Street',
+     body:'In the 19th century, the empire\'s banks lined this street. The former Ottoman Bank headquarters (1892, by Alexandre Vallaury) has a different style of façade on each side. It\'s now SALT Galata: free, with a café, a library and the old bank vaults.',
+     tip:'It may be closed by evening, but the street itself is still worth walking.'},
+    {name:'Kamondo Stairs', kind:'curio', lat:41.0247, lng:28.9743,
+     short:'Curving Art Nouveau-ish double staircase',
+     body:'These elegant interlocking stairs, from around 1870–80, were paid for by Abraham Salomon Camondo of the Jewish banking dynasty to link his bank with his home. Henri Cartier-Bresson photographed them in 1964.'},
+    {name:'Galata Tower', kind:'classic', lat:41.0256, lng:28.9741,
+     short:'Genoese, 1348',
+     body:'Built as the high point of the Genoese colony\'s walls. According to the 17th-century writer Evliya Çelebi, Hezarfen Ahmed Çelebi strapped on wings, jumped from the top and glided all the way across the Bosphorus to Üsküdar, where you were this afternoon. The sultan supposedly rewarded him with gold, then exiled him for being too dangerous.',
+     tip:'Queues to go up are long. It looks best from the surrounding lanes anyway.'},
+    {name:'Galata Mevlevi Lodge', kind:'curio', lat:41.0283, lng:28.9741,
+     short:'A whirling dervish lodge from 1491',
+     body:'The oldest Mevlevi lodge in Istanbul, now a museum with a beautiful wooden octagonal semahane (ceremony hall) and a peaceful graveyard of turban-topped tombstones.',
+     tip:'Sema (whirling) ceremonies happen on some evenings. Check at the gate.'},
+    {name:'Tünel', kind:'curio', lat:41.0295, lng:28.9747,
+     short:'The world\'s second-oldest underground railway',
+     body:'Opened in 1875, twelve years after London\'s Metropolitan line. It\'s a 573-metre funicular that saved 19th-century bankers the climb from Karaköy up to Pera. The upper station is at the bottom of İstiklal.'},
+    {name:'Pera Palace Hotel', kind:'curio', lat:41.0318, lng:28.9738,
+     short:'Built for Orient Express passengers, 1892',
+     body:'The grand hotel where Orient Express travellers stayed. Agatha Christie is said to have written part of Murder on the Orient Express in room 411, and Atatürk\'s room 101 is kept as a museum. The lobby and patisserie are open to non-guests.'},
+    {name:'Çiçek Pasajı', kind:'classic', lat:41.0344, lng:28.9781,
+     short:'The 1876 "Cité de Péra" arcade',
+     body:'This glass-roofed arcade was once full of flower sellers and is now a row of meyhanes (taverns). From here, İstiklal Caddesi, the old Grande Rue de Péra, runs on with its red nostalgic tram up to Taksim.'},
+    {name:'Taksim Square', kind:'practical', lat:41.0369, lng:28.9850,
+     short:'End of the line',
+     body:'Take the F1 funicular or the M2 metro, or walk back downhill to Karaköy (about 25 minutes).'}
+  ]
+}
+];
+
+/* ------------------------------------------------------------------ GEO HELPERS */
+const toRad = d => d*Math.PI/180;
+function hav(a,b){
+  const R=6371000, dLat=toRad(b[0]-a[0]), dLng=toRad(b[1]-a[1]);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+const KX = Math.cos(toRad(41.01))*111320, KY = 110574;
+function projSeg(p,a,b){
+  const ax=(a[1]-p[1])*KX, ay=(a[0]-p[0])*KY, bx=(b[1]-p[1])*KX, by=(b[0]-p[0])*KY;
+  const dx=bx-ax, dy=by-ay, L2=dx*dx+dy*dy;
+  let t = L2 ? -(ax*dx+ay*dy)/L2 : 0; t=Math.max(0,Math.min(1,t));
+  return {d:Math.hypot(ax+t*dx, ay+t*dy), t};
+}
+const fmtKm = km => km<1 ? Math.round(km*1000/10)*10+' m' : km.toFixed(1)+' km';
+
+/* ------------------------------------------------------------------ STATE */
+let segs=[], totalKm=0, walkKm=0, allPlaces=[], lastKm=null, lastPos=null, follow=false, firstFix=true;
+SECTIONS.forEach((s,i)=>{ s.n=i+1; s.coords=s.via.slice(); });
+let num=0;
+SECTIONS.forEach(s=>s.places.forEach(p=>{ p.id=++num; p.sec=s; allPlaces.push(p); }));
+
+function buildIndex(){
+  segs=[]; let km=0; walkKm=0;
+  SECTIONS.forEach(s=>{
+    s.km0=km; const c=s.coords;
+    for(let i=0;i<c.length-1;i++){ const len=hav(c[i],c[i+1])/1000; segs.push({s,a:c[i],b:c[i+1],km0:km,len}); km+=len; }
+    s.km1=km; s.len=s.km1-s.km0; if(s.mode==='walk') walkKm+=s.len;
+  });
+  totalKm=km;
+  allPlaces.forEach(p=>{
+    let best=null;
+    segs.forEach(g=>{ if(g.s!==p.sec) return; const r=projSeg([p.lat,p.lng],g.a,g.b); if(!best||r.d<best.d) best={d:r.d,km:g.km0+r.t*g.len}; });
+    p.km=best?best.km:p.sec.km0; p.off=best?best.d:0;
+  });
+}
+
+/* ------------------------------------------------------------------ RENDER LIST */
+const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function gmaps(p){ return 'https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng; }
+
+function renderList(){
+  const root=document.getElementById('sections');
+  root.innerHTML = SECTIONS.map(s=>`
+    <section class="sec ${s.mode==='ferry'?'ferry':''}" id="sec-${s.id}" style="--c:${s.color}">
+      <div class="sechead">
+        <div class="secnum">${s.mode==='ferry'?'⛴':s.n}</div>
+        <div><h2>${esc(s.title)}</h2><div class="meta" id="meta-${s.id}"></div></div>
+      </div>
+      <p class="secdesc">${esc(s.desc)}</p>
+      <div class="cards">
+      ${s.places.map(p=>{const k=KINDS[p.kind]; return `
+        <details class="card k-${p.kind}" id="p-${p.id}" style="--k:${k.c}">
+          <summary>
+            <span class="pnum"><span>${p.id}</span></span>
+            <span class="ptitle">${esc(p.name)}<small>${esc(p.short)}</small></span>
+            <span class="badge">${k.label}</span>${chev}
+          </summary>
+          <div class="body">
+            ${p.body.split('\n\n').map(t=>`<p>${esc(t)}</p>`).join('')}
+            ${p.tip?`<p class="tip">${esc(p.tip)}</p>`:''}
+            <div class="actions">
+              <button data-show="${p.id}">Show on map</button>
+              <a href="${gmaps(p)}" target="_blank" rel="noopener">Google Maps ↗</a>
+              <span class="ondist" id="d-${p.id}"></span>
+            </div>
+          </div>
+        </details>`;}).join('')}
+      </div>
+    </section>`).join('');
+  updateMeta();
+}
+function updateMeta(){
+  SECTIONS.forEach(s=>{
+    const el=document.getElementById('meta-'+s.id); if(!el) return;
+    el.textContent = s.time + ' · ' + (s.mode==='ferry' ? '~'+s.ferryMins+' min ferry' : fmtKm(s.len)+' walk') + ' · stops '+s.places[0].id+(s.places.length>1?'–'+s.places[s.places.length-1].id:'');
+  });
+  document.getElementById('totals').textContent = `About ${walkKm.toFixed(0)} km of walking (plus optional detours) and two ferries.`;
+}
+
+/* ------------------------------------------------------------------ MAP */
+let map, lines={}, markers={}, meMarker, meCircle, baseLayers, layerIdx=0;
+function initMap(){
+  if(typeof L==='undefined'){ document.getElementById('map').innerHTML='<div style="padding:20px">The map library didn\'t load, so check your connection. The guide below still works.</div>'; return; }
+  map=L.map('map',{zoomControl:false, attributionControl:true});
+  L.control.zoom({position:'bottomleft'}).addTo(map);
+  const attrOSM='© <a href="https://www.openstreetmap.org/copyright">OSM</a>';
+  baseLayers=[
+    {name:'Voyager', layer:L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,attribution:attrOSM+' © <a href="https://carto.com/attributions">CARTO</a>'})},
+    {name:'Light', layer:L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,attribution:attrOSM+' © CARTO'})},
+    {name:'Satellite', layer:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery © Esri'})}
+  ];
+  try{ const saved=+localStorage.getItem('istwalk-layer'); if(saved>=0&&saved<baseLayers.length) layerIdx=saved; }catch(e){}
+  baseLayers[layerIdx].layer.addTo(map);
+
+  SECTIONS.forEach(s=>{
+    const isF=s.mode==='ferry';
+    const casing=L.polyline(s.coords,{color:'#fff',weight:isF?6:8,opacity:.9,interactive:false});
+    const line=L.polyline(s.coords,{color:s.color,weight:isF?3.5:4.5,opacity:.95,dashArray:isF?'2 9':null,lineCap:'round'});
+    line.bindTooltip((isF?'⛴ ':s.n+'. ')+s.title,{sticky:true});
+    line.on('click',()=>scrollToSection(s));
+    casing.addTo(map); line.addTo(map);
+    lines[s.id]={casing,line};
+  });
+  allPlaces.forEach(p=>{
+    const k=KINDS[p.kind];
+    const icon=L.divIcon({className:'',html:`<div class="pin k-${p.kind}" style="--k:${k.c}"><span>${p.id}</span></div>`,iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-12]});
+    const m=L.marker([p.lat,p.lng],{icon,riseOnHover:true}).addTo(map);
+    m.bindPopup(`<b>${p.id}. ${esc(p.name)}</b><br>${esc(p.short)}<br><button class="pop-more" data-open="${p.id}">Read more ↓</button>`);
+    markers[p.id]=m;
+  });
+  fitAll();
+  map.on('dragstart',()=>setFollow(false));
+  map.on('popupopen',e=>{
+    const btn=e.popup.getElement().querySelector('.pop-more');
+    if(btn) L.DomEvent.on(btn,'click',ev=>{ L.DomEvent.stop(ev); map.closePopup(); openCard(+btn.dataset.open); });
+  });
+}
+function fitAll(){ if(!map) return; const b=L.latLngBounds([]); SECTIONS.forEach(s=>s.coords.forEach(c=>b.extend(c))); map.fitBounds(b,{padding:[20,20]}); }
+function redrawLines(){ if(!map) return; SECTIONS.forEach(s=>{ lines[s.id].casing.setLatLngs(s.coords); lines[s.id].line.setLatLngs(s.coords); }); }
+
+/* ------------------------------------------------------------------ UI ACTIONS */
+const app=document.getElementById('app');
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),1400); }
+function openCard(id){
+  const el=document.getElementById('p-'+id); if(!el) return;
+  app.classList.remove('bigmap'); document.getElementById('btnSize').classList.remove('on');
+  el.open=true; setTimeout(()=>{ el.scrollIntoView({behavior:'smooth',block:'start'}); if(map) map.invalidateSize(); },60);
+}
+function showOnMap(id){
+  const p=allPlaces.find(x=>x.id==id); if(!p||!map) return;
+  setFollow(false); map.setView([p.lat,p.lng],17); markers[p.id].openPopup();
+}
+function scrollToSection(s){ const el=document.getElementById('sec-'+s.id); if(el){ app.classList.remove('bigmap'); el.scrollIntoView({behavior:'smooth',block:'start'}); } }
+
+document.addEventListener('click',e=>{
+  const o=e.target.closest('[data-open]'); if(o){ openCard(+o.dataset.open); return; }
+  const sh=e.target.closest('[data-show]'); if(sh){ showOnMap(+sh.dataset.show); return; }
+});
+document.getElementById('btnFit').onclick=()=>{ setFollow(false); fitAll(); };
+document.getElementById('btnLayer').onclick=()=>{
+  if(!map) return; map.removeLayer(baseLayers[layerIdx].layer); layerIdx=(layerIdx+1)%baseLayers.length;
+  baseLayers[layerIdx].layer.addTo(map); baseLayers[layerIdx].layer.bringToBack(); toast('Map style: '+baseLayers[layerIdx].name);
+  try{ localStorage.setItem('istwalk-layer',layerIdx); }catch(e){}
+};
+document.getElementById('btnSize').onclick=function(){
+  app.classList.toggle('bigmap'); this.classList.toggle('on');
+  setTimeout(()=>map&&map.invalidateSize(),280);
+};
+document.getElementById('btnLocate').onclick=()=>{
+  if(!lastPos){ startGeo(true); toast('Finding you…'); return; }
+  setFollow(!follow); if(follow){ map.setView(lastPos, Math.max(map.getZoom(),16)); toast('Following you'); }
+};
+document.getElementById('status').onclick=()=>{ if(currentSec) scrollToSection(currentSec); };
+function setFollow(v){ follow=v; document.getElementById('btnLocate').classList.toggle('on',v); }
+
+/* ------------------------------------------------------------------ LOCATION */
+let watchId=null, currentSec=null;
+function startGeo(){
+  if(!('geolocation' in navigator)){ setStatus('off','Location not available','This browser doesn\'t share location. Use the Google Maps buttons to navigate.'); return; }
+  if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+  watchId=navigator.geolocation.watchPosition(onPos,onErr,{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
+}
+function onErr(err){
+  if(lastPos) return;
+  if(err.code===1) setStatus('off','Location blocked','Chrome may block location for files opened from Downloads. The Google Maps buttons on each card still show where you are.');
+  else setStatus('off','Can\'t get a GPS fix yet','Still trying. Being outdoors helps.');
+}
+function onPos(pos){
+  const ll=[pos.coords.latitude,pos.coords.longitude]; lastPos=ll;
+  if(map){
+    if(!meMarker){
+      meCircle=L.circle(ll,{radius:pos.coords.accuracy,color:'#2a7bf6',weight:1,fillOpacity:.08,interactive:false}).addTo(map);
+      meMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[18,18],iconAnchor:[9,9]}),zIndexOffset:1000}).addTo(map);
+    } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(pos.coords.accuracy); }
+    if(firstFix){ firstFix=false; setFollow(true); map.setView(ll,16); }
+    else if(follow) map.panTo(ll,{animate:true});
+  }
+  updateProgress();
+}
+function updateProgress(){
+  if(!lastPos||!segs.length) return;
+  const res=segs.map(g=>{ const r=projSeg(lastPos,g.a,g.b); return {g,d:r.d,km:g.km0+r.t*g.len}; });
+  const minD=Math.min(...res.map(r=>r.d));
+  let cands=res.filter(r=>r.d<=minD+40);
+  let pick = lastKm===null ? cands.reduce((a,b)=>a.d<=b.d?a:b) : cands.reduce((a,b)=>Math.abs(a.km-lastKm)<=Math.abs(b.km-lastKm)?a:b);
+  const sec=pick.g.s;
+  document.querySelectorAll('.sec.here').forEach(e=>e.classList.remove('here'));
+  if(minD>250){
+    lastKm=null; currentSec=sec;
+    setStatus('off',`${fmtKm(minD/1000)} from the route`,`Nearest point is on ${sec.mode==='ferry'?'the ferry':'section '+sec.n}: ${sec.title}`);
+    document.querySelector('.progress i').style.width='0%';
+  } else {
+    lastKm=pick.km; currentSec=sec;
+    document.getElementById('sec-'+sec.id).classList.add('here');
+    const next=allPlaces.filter(p=>p.km>pick.km+0.03).sort((a,b)=>a.km-b.km)[0];
+    const done=pick.km/totalKm*100;
+    setStatus('live', sec.mode==='ferry' ? 'On the ferry ⛴' : `On route · section ${sec.n}`,
+      next ? `Next: ${next.id}. ${next.name} · ${fmtKm(next.km-pick.km)} along the route` : 'You\'ve made it. That\'s the whole loop!');
+    document.querySelector('.progress i').style.width=done.toFixed(1)+'%';
+  }
+  allPlaces.forEach(p=>{ const el=document.getElementById('d-'+p.id); if(el) el.textContent = fmtKm(hav(lastPos,[p.lat,p.lng])/1000)+' away'; });
+}
+function setStatus(cls,main,sub){
+  const st=document.getElementById('status'); st.className=cls;
+  st.querySelector('.st-main').textContent=main; st.querySelector('.st-sub').textContent=sub;
+}
+
+/* ------------------------------------------------------------------ ROUTING (snap legs to streets) */
+const CACHE='istwalk-route-v1-';
+async function snapLeg(s){
+  try{ const c=localStorage.getItem(CACHE+s.id); if(c){ s.coords=JSON.parse(c); return 'cache'; } }catch(e){}
+  const coordStr=s.via.map(([la,ln])=>ln.toFixed(5)+','+la.toFixed(5)).join(';');
+  const url='https://routing.openstreetmap.de/routed-foot/route/v1/driving/'+coordStr+'?overview=full&geometries=geojson';
+  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),10000);
+  try{
+    const r=await fetch(url,{signal:ctrl.signal}); clearTimeout(t);
+    if(!r.ok) return 'fail';
+    const j=await r.json();
+    if(j.code!=='Ok'||!j.routes||!j.routes[0]) return 'fail';
+    const pts=j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]);
+    let viaLen=0; for(let i=0;i<s.via.length-1;i++) viaLen+=hav(s.via[i],s.via[i+1]);
+    if(j.routes[0].distance>viaLen*1.9+300) return 'odd';
+    s.coords=pts;
+    try{ localStorage.setItem(CACHE+s.id,JSON.stringify(pts.map(p=>[+p[0].toFixed(5),+p[1].toFixed(5)]))); }catch(e){}
+    return 'ok';
+  }catch(e){ clearTimeout(t); return 'fail'; }
+}
+async function snapAll(){
+  let ok=0, n=0;
+  for(const s of SECTIONS){
+    if(s.mode!=='walk') continue; n++;
+    const r=await snapLeg(s); if(r==='ok'||r==='cache') ok++;
+    buildIndex(); redrawLines(); updateMeta(); updateProgress();
+  }
+  document.getElementById('routenote').textContent = ok===n ? 'The route follows real streets, snapped with OpenStreetMap walking directions.'
+    : ok ? `${ok} of ${n} walking sections are snapped to streets. The rest are shown as approximate lines.`
+    : 'The route is shown as approximate lines (street-snapping unavailable). Follow the streets near the line.';
+}
+
+/* ------------------------------------------------------------------ GO */
+buildIndex();
+renderList();
+initMap();
+startGeo();
+snapAll();
+</script>
+</body>
+</html>

@@ -3,156 +3,236 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#1d4f91">
-<title>Istanbul on foot · two-continent loop</title>
+<meta name="theme-color" content="#F4EFE3">
+<title>Istanbul on foot · a walking chart</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#1d2433; --muted:#6a6f7b; --cream:#f5efe3; --paper:#fffaf2; --line:#e5dac6;
-  --blue:#1d4f91; --turq:#14898a; --terra:#c0502b; --ochre:#a87512; --slate:#56606f;
+  --ground:#F4EFE3; --paper:#FBF8F0; --ink:#0F2A1C; --muted:#4C6A57; --faint:#6F8A78; --hair:#D8D5C2;
+  --emerald:#07703E; --emerald-d:#05592F; --lichen:#B9CF7A; --lichen-line:#9DB850; --on-lichen:#0E3B22;
+  --wash:rgba(185,207,122,.26); --bark:#8A5A2B; --sepia:#5B4128;
+  --k-classic:#0E4D2E; --k-curio:#8A5A2B; --k-food:#587414; --k-practical:#2F6E5F;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--cream);color:var(--ink);
-  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5}
+html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);
+  font-family:"Space Grotesk",system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.tn{font-variant-numeric:tabular-nums}
+button{font-family:inherit}
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
-#mapwrap{position:relative;height:46vh;height:46dvh;flex:none;transition:height .25s ease}
+
+/* ------------------------------------------------ MAP */
+#mapwrap{position:relative;height:47vh;height:47dvh;flex:none;transition:height .25s ease;border-bottom:1px solid var(--ink)}
 #app.bigmap #mapwrap{height:80vh;height:80dvh}
-#map{position:absolute;inset:0;background:#e8e4da}
-.band{height:6px;flex:none;background:
-  repeating-linear-gradient(90deg,var(--blue) 0 14px,var(--turq) 14px 20px,var(--blue) 20px 34px,var(--terra) 34px 38px)}
+#map{position:absolute;inset:0;z-index:0;background:#EDE3CD}
+.tiles-parchment{filter:url(#oldmap)}
+.tiles-sat{filter:sepia(.28) saturate(.85) brightness(1.04)}
+.paper-tex{position:absolute;pointer-events:none;mix-blend-mode:multiply;opacity:.55;
+  background-image:
+   radial-gradient(ellipse at 18% 32%,rgba(139,96,40,.10),transparent 22%),
+   radial-gradient(ellipse at 72% 64%,rgba(139,96,40,.08),transparent 18%),
+   radial-gradient(ellipse at 44% 86%,rgba(139,96,40,.07),transparent 15%),
+   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .3 0 0 0 0 .16 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:900px 700px,700px 600px,600px 500px,240px 240px}
+.vignette{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%,transparent 58%,rgba(91,65,40,.22) 100%)}
+
+.cartouche{position:absolute;left:10px;top:10px;z-index:2;background:rgba(251,248,240,.94);
+  border:1px solid var(--sepia);outline:1px solid rgba(91,65,40,.45);outline-offset:3px;padding:6px 12px 7px;color:var(--sepia);pointer-events:none}
+.cartouche .c1{font-family:"IM Fell English",Georgia,serif;font-size:23px;line-height:1}
+.cartouche .c2{font-family:"IM Fell English",Georgia,serif;font-style:italic;font-size:12.5px;line-height:1.2;margin-top:3px}
+.compass{position:absolute;right:10px;bottom:22px;z-index:2;width:58px;height:58px;pointer-events:none;opacity:.85}
+
+.mapbtns{position:absolute;right:10px;top:10px;z-index:3;display:flex;flex-direction:column;gap:6px}
+.mapbtns button{width:40px;height:40px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);
+  display:grid;place-items:center;cursor:pointer;padding:0;border-radius:0}
+.mapbtns button svg{width:20px;height:20px}
+.mapbtns button.on{background:var(--emerald);border-color:var(--emerald);color:#fff}
+#toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;background:var(--ink);color:var(--paper);
+  padding:5px 11px;font-size:13px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+.leaflet-control-zoom{border:1px solid var(--ink)!important;border-radius:0!important;box-shadow:none!important}
+.leaflet-control-zoom a{border-radius:0!important;background:var(--paper)!important;color:var(--ink)!important;font-family:"Space Grotesk"!important;font-weight:400}
+.leaflet-control-attribution{background:rgba(251,248,240,.8)!important;font:10px "Space Grotesk",sans-serif!important;color:var(--faint)!important}
+.leaflet-control-attribution a{color:var(--muted)!important}
+
+/* ornaments */
+.orn{pointer-events:none;color:var(--sepia);white-space:nowrap}
+.orn-water{font-family:"IM Fell English",Georgia,serif;font-style:italic;font-size:15px;color:#3E5A66;opacity:.85;letter-spacing:.02em}
+.orn-land{font-family:"IM Fell English SC",Georgia,serif;font-size:19px;letter-spacing:.42em;opacity:.55}
+.zhi .orn{display:none}
+.zlo .secpin{display:none}
+
+/* markers */
+.pin{width:22px;height:22px;display:grid;place-items:center;color:#fff;font:600 10.5px/1 "Space Grotesk",sans-serif;
+  font-variant-numeric:tabular-nums;border:2px solid var(--paper);background:var(--k)}
+.pin.k-food{border-radius:50%}
+.pin.k-curio{transform:rotate(45deg);width:20px;height:20px}
+.pin.k-curio span{transform:rotate(-45deg)}
+.pin.k-practical{background:var(--paper);color:var(--k);border:2px solid var(--k)}
+.pin.dim{opacity:.18}
+.secpin{background:var(--ink);color:var(--lichen);font:700 11px/1 "Space Grotesk",sans-serif;font-variant-numeric:tabular-nums;
+  padding:4px 5px;white-space:nowrap;border:1px solid var(--lichen)}
+.boat{width:30px;height:20px}
+.me{width:16px;height:16px;border-radius:50%;background:var(--emerald);border:3px solid var(--paper);
+  box-shadow:0 0 0 0 rgba(185,207,122,.9);animation:pulse 2.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(157,184,80,.75)}70%{box-shadow:0 0 0 18px rgba(157,184,80,0)}100%{box-shadow:0 0 0 0 rgba(157,184,80,0)}}
+.leaflet-popup-content-wrapper{border-radius:0;background:var(--paper);border:1px solid var(--ink);box-shadow:none;padding:0}
+.leaflet-popup-tip{background:var(--paper);border:1px solid var(--ink);box-shadow:none}
+.leaflet-popup-content{margin:0;width:220px!important;font:14px/1.4 "Space Grotesk",sans-serif;color:var(--ink)}
+.pop img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--ground)}
+.pop .pt{padding:8px 11px 10px}
+.pop b{font-weight:600;font-size:14.5px}
+.pop .ps{font-weight:300;color:var(--muted);font-size:13px;margin-top:1px}
+.pop-more{margin-top:8px;font:600 13px "Space Grotesk",sans-serif;color:#fff;background:var(--emerald);border:0;padding:6px 10px;cursor:pointer;border-radius:0}
+.leaflet-container a.leaflet-popup-close-button{color:var(--ink);z-index:2;background:var(--paper);width:22px;height:22px;top:4px;right:4px;font:400 18px/22px "Space Grotesk"}
+
+/* ------------------------------------------------ PANEL */
 #panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 
-/* map buttons */
-.mapbtns{position:absolute;right:10px;top:10px;z-index:500;display:flex;flex-direction:column;gap:8px}
-.mapbtns button{width:42px;height:42px;border-radius:12px;border:0;background:rgba(255,250,242,.96);
-  box-shadow:0 2px 8px rgba(29,36,51,.25);display:grid;place-items:center;color:var(--ink);cursor:pointer;padding:0}
-.mapbtns button svg{width:22px;height:22px}
-.mapbtns button.on{background:var(--blue);color:#fff}
-#toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;background:rgba(29,36,51,.88);color:#fff;
-  padding:6px 12px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
-#toast.show{opacity:1}
+#dock{position:sticky;top:0;z-index:10;background:var(--paper);border-bottom:1px solid var(--hair);padding:10px 14px 10px;cursor:pointer}
+.dk-row{display:flex;align-items:center;gap:12px}
+.dk-num{font-size:30px;font-weight:300;letter-spacing:-.03em;line-height:1;color:var(--emerald);width:40px;flex:none}
+.dk-main{flex:1;min-width:0}
+.dk-t{font-weight:600;font-size:14.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dk-s{font-weight:300;font-size:13px;color:var(--muted);line-height:1.3;margin-top:1px}
+.dk-km{text-align:right;flex:none;line-height:1.05}
+.dk-km b{display:block;font-weight:600;font-size:18px}
+.dk-km span{font-weight:300;font-size:12px;color:var(--muted)}
+.strip{display:flex;gap:2px;margin-top:9px;height:7px}
+.strip i{display:block;position:relative;background:var(--hair);min-width:3px}
+.strip i.ferry{background:repeating-linear-gradient(90deg,var(--hair) 0 3px,transparent 3px 6px)}
+.strip i.done{background:var(--lichen)}
+.strip i.ferry.done{background:repeating-linear-gradient(90deg,var(--lichen-line) 0 3px,transparent 3px 6px)}
+.strip i b{position:absolute;left:0;top:0;bottom:0;background:var(--emerald)}
+#dock.off .dk-num{color:var(--bark)}
 
-/* status */
-#status{position:sticky;top:0;z-index:10;background:var(--paper);border-bottom:1px solid var(--line);
-  padding:10px 14px;display:flex;gap:10px;align-items:center;cursor:pointer}
-#status .dot{width:12px;height:12px;border-radius:50%;background:#b9b3a6;flex:none;box-shadow:0 0 0 3px rgba(185,179,166,.25)}
-#status.live .dot{background:#2a7bf6;box-shadow:0 0 0 3px rgba(42,123,246,.25)}
-#status.off .dot{background:var(--terra);box-shadow:0 0 0 3px rgba(192,80,43,.25)}
-#status .st-main{font-weight:600;font-size:14px}
-#status .st-sub{font-size:12.5px;color:var(--muted)}
-.progress{height:4px;background:var(--line);border-radius:4px;margin-top:5px;overflow:hidden}
-.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--turq),var(--blue));transition:width .4s}
+.hero{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--ground)}
+.intro{padding:4px 16px 4px}
+h1{margin:6px 0 2px;font-size:32px;line-height:1.05;letter-spacing:-.03em;font-weight:700}
+h1 span{font-weight:300}
+.sub{font-weight:300;color:var(--muted);font-size:14.5px;margin:0 0 12px}
+.lede{margin:0 0 14px;font-weight:400}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--hair);margin:0 0 14px}
+.stats div{padding:9px 0 9px 10px;border-left:1px solid var(--hair)}
+.stats div:first-child{border-left:0;padding-left:0}
+.stats b{display:block;font-weight:300;font-size:24px;letter-spacing:-.02em;line-height:1.1}
+.stats span{font-size:12px;color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 6px}
+.filters button{border:0;background:transparent;color:var(--ink);font-weight:400;font-size:14px;padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:7px;border-radius:0}
+.filters button[aria-pressed="true"]{background:var(--wash);font-weight:700;color:var(--on-lichen)}
+.glyph{display:inline-block;width:10px;height:10px;background:var(--k);flex:none}
+.glyph.k-food{border-radius:50%}
+.glyph.k-curio{transform:rotate(45deg);width:9px;height:9px}
+.glyph.k-practical{background:transparent;border:2px solid var(--k)}
+.note{display:flex;gap:10px;align-items:flex-start;background:var(--wash);padding:10px 12px;margin:8px 0 6px;font-size:14px}
+.note svg{flex:none;width:22px;height:22px;margin-top:1px;color:var(--on-lichen)}
 
-header.intro{padding:18px 16px 6px}
-h1{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:28px;line-height:1.1;margin:0 0 6px;letter-spacing:-.01em}
-.lede{margin:0 0 10px;color:#3a4150}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
-.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;color:#fff}
-.note{font-size:13px;background:#fff3d6;border:1px solid #f0dca8;border-radius:10px;padding:8px 10px;margin:10px 0 4px}
+.sec{margin:26px 0 0;scroll-margin-top:84px}
+.banner{display:block;width:100%;aspect-ratio:21/9;object-fit:cover;background:var(--ground)}
+.sechead{display:flex;gap:12px;align-items:flex-start;padding:10px 16px 6px;border-top:1px solid var(--ink);margin:0 16px;padding-left:0;padding-right:0}
+.secnum{font-size:40px;font-weight:300;letter-spacing:-.04em;line-height:.9;color:var(--emerald);flex:none;min-width:48px;padding-top:2px}
+.secnum svg{width:40px;height:30px}
+.sechead h2{margin:0;font-size:18.5px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+.sechead .meta{font-weight:300;font-size:13px;color:var(--muted);margin-top:2px}
+.here-tag{display:none;background:var(--lichen);color:var(--on-lichen);font-weight:700;font-size:12px;padding:2px 7px;margin-left:6px;vertical-align:1px}
+.sec.here .here-tag{display:inline-block}
+.secdesc{margin:2px 16px 12px;font-size:14.5px;color:#22392B}
 
-/* sections */
-.sec{margin:14px 10px 0;background:var(--paper);border-radius:16px;border:1px solid var(--line);overflow:hidden;scroll-margin-top:64px}
-.sechead{display:flex;gap:12px;align-items:center;padding:12px 14px 6px}
-.secnum{width:34px;height:34px;border-radius:10px;background:var(--c);color:#fff;display:grid;place-items:center;
-  font-family:Fraunces,Georgia,serif;font-weight:700;font-size:17px;flex:none}
-.sec.ferry .secnum{border-radius:50%}
-.sechead h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:18.5px;line-height:1.2;margin:0}
-.sechead .meta{font-size:12.5px;color:var(--muted)}
-.sec.here{border-color:var(--c);box-shadow:0 0 0 2px var(--c)}
-.sec.here .sechead h2::after{content:"  · you're here";font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--c)}
-.secdesc{margin:0;padding:2px 14px 10px;color:#3a4150;font-size:14px}
-.cards{border-top:1px solid var(--line)}
-
-details.card{border-bottom:1px solid var(--line);scroll-margin-top:64px}
-details.card:last-child{border-bottom:0}
-details.card summary{list-style:none;display:flex;gap:10px;align-items:center;padding:10px 14px;cursor:pointer}
+.cards{margin:0 16px;border:1px solid var(--hair);background:var(--paper)}
+details.card{border-top:1px solid var(--hair);scroll-margin-top:84px}
+details.card:first-child{border-top:0}
+details.card summary{list-style:none;display:flex;gap:11px;align-items:center;padding:10px 12px;cursor:pointer}
 details.card summary::-webkit-details-marker{display:none}
-.pnum{width:26px;height:26px;border-radius:50%;background:var(--k);color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;flex:none}
-.card.k-curio .pnum{border-radius:6px;transform:rotate(45deg)}
-.card.k-curio .pnum span{transform:rotate(-45deg)}
-.ptitle{flex:1;min-width:0;font-weight:600;font-size:14.5px;line-height:1.3}
-.ptitle small{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:1px}
-.badge{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--k);flex:none}
-.chev{flex:none;width:16px;height:16px;color:#a39c8f;transition:transform .2s}
-details[open] .chev{transform:rotate(180deg)}
-details[open] summary{background:#fbf4e6}
-.body{padding:2px 14px 14px 50px;font-size:14.5px;color:#2a3140}
-.body p{margin:8px 0}
-.body .tip{background:#eef6f5;border-left:3px solid var(--turq);padding:7px 10px;border-radius:0 8px 8px 0;font-size:13.5px}
-.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.actions button,.actions a{font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;border:1px solid var(--line);
-  background:#fff;color:var(--blue);text-decoration:none;cursor:pointer}
-.actions .ondist{font-size:12.5px;color:var(--muted);align-self:center}
+details.card[open] summary{background:var(--wash)}
+details.card.hide{display:none}
+.mk{flex:none;width:22px;height:22px;display:grid;place-items:center;color:#fff;background:var(--k);font:600 10.5px/1 "Space Grotesk";font-variant-numeric:tabular-nums}
+.mk.k-food{border-radius:50%}
+.mk.k-curio{transform:rotate(45deg);width:19px;height:19px;margin:0 1.5px}
+.mk.k-curio span{transform:rotate(-45deg)}
+.mk.k-practical{background:transparent;color:var(--k);border:2px solid var(--k)}
+.ptitle{flex:1;min-width:0;font-weight:500;font-size:14.5px;line-height:1.3}
+.ptitle small{display:block;font-weight:300;color:var(--muted);font-size:13px;margin-top:1px}
+.chev{flex:none;width:16px;height:16px;color:var(--faint);transition:transform .2s}
+details[open] .chev{transform:rotate(180deg);color:var(--on-lichen)}
+.body{padding:0 12px 14px}
+.body img{display:block;width:calc(100% + 24px);margin:0 -12px 4px;aspect-ratio:4/3;object-fit:cover;background:var(--ground)}
+.body p{margin:9px 0;font-size:14.5px;line-height:1.55}
+.body .tip{background:var(--wash);padding:8px 11px;font-size:14px}
+.body .tip b{font-weight:700;color:var(--on-lichen);margin-right:4px}
+.actions{display:flex;gap:6px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.actions button,.actions a{font:500 13.5px "Space Grotesk",sans-serif;padding:7px 11px;border:1px solid var(--ink);background:transparent;color:var(--ink);text-decoration:none;cursor:pointer;border-radius:0}
+.actions button.pri{background:var(--emerald);border-color:var(--emerald);color:#fff;font-weight:700}
+.actions .away{margin-left:auto;font-weight:300;font-size:13px;color:var(--muted)}
 
-footer{padding:18px 16px 40px;font-size:12px;color:var(--muted)}
-footer p{margin:6px 0}
-
-/* map markers */
-.pin{width:24px;height:24px;border-radius:50%;background:var(--k);color:#fff;border:2px solid #fff;
-  box-shadow:0 1px 4px rgba(0,0,0,.35);display:grid;place-items:center;font:600 11px Inter,sans-serif}
-.pin.k-curio{border-radius:5px;transform:rotate(45deg)}
-.pin.k-curio span{transform:rotate(-45deg)}
-.me{width:18px;height:18px;border-radius:50%;background:#2a7bf6;border:3px solid #fff;box-shadow:0 0 0 0 rgba(42,123,246,.6);animation:pulse 2s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(42,123,246,.55)}70%{box-shadow:0 0 0 16px rgba(42,123,246,0)}100%{box-shadow:0 0 0 0 rgba(42,123,246,0)}}
-.leaflet-popup-content{font:14px/1.4 Inter,sans-serif;margin:10px 12px}
-.leaflet-popup-content b{font-family:Fraunces,Georgia,serif;font-size:15px}
-.pop-more{margin-top:6px;font:600 13px Inter,sans-serif;color:var(--blue);background:none;border:0;padding:0;cursor:pointer}
-.ferrylabel{background:rgba(255,250,242,.92);border-radius:10px;padding:2px 7px;font:600 11px Inter,sans-serif;color:#1f5fb0;white-space:nowrap;
-  box-shadow:0 1px 3px rgba(0,0,0,.2)}
+footer{margin:34px 16px 0;padding:14px 0 48px;border-top:1px solid var(--ink);font-size:12.5px;color:var(--muted);font-weight:300}
+footer p{margin:5px 0}
+footer a{color:var(--muted)}
+.gull{width:54px;height:22px;color:var(--sepia);opacity:.7;display:block;margin-bottom:6px}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="oldmap" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0.646 0.425 -0.351 0 0.205  0.172 0.437 0.131 0 0.155  -0.13 0.413 0.417 0 0.08  0 0 0 1 0"/></filter></svg>
 <div id="app">
   <div id="mapwrap">
     <div id="map"></div>
+    <div class="vignette"></div>
+    <div class="cartouche"><div class="c1">Istanbul</div><div class="c2">a walking chart · 7 Nov 2026</div></div>
+    <svg class="compass" viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="none" stroke="#5B4128" stroke-width="1">
+        <circle cx="32" cy="34" r="21"/><circle cx="32" cy="34" r="17.5" stroke-dasharray="1 2.4"/>
+      </g>
+      <path d="M32 11 36 30 32 34 28 30Z" fill="#5B4128"/><path d="M32 57 28 38 32 34 36 38Z" fill="#B9CF7A" stroke="#5B4128" stroke-width=".8"/>
+      <path d="M55 34 36 38 32 34 36 30Z" fill="#B9CF7A" stroke="#5B4128" stroke-width=".8"/><path d="M9 34 28 30 32 34 28 38Z" fill="#5B4128"/>
+      <path d="M48 18 35 31M16 50 29 37M48 50 35 37M16 18 29 31" stroke="#5B4128" stroke-width=".7"/>
+      <text x="32" y="8.5" text-anchor="middle" font-family="IM Fell English,Georgia,serif" font-size="9" fill="#5B4128">N</text>
+    </svg>
     <div id="toast"></div>
     <div class="mapbtns">
-      <button id="btnLocate" title="Follow my location" aria-label="Follow my location">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
-      </button>
-      <button id="btnFit" title="Show whole route" aria-label="Show whole route">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-      </button>
-      <button id="btnLayer" title="Change map style" aria-label="Change map style">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 13 10 5 10-5"/></svg>
-      </button>
-      <button id="btnSize" title="Bigger map" aria-label="Bigger map">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>
-      </button>
+      <button id="btnLocate" title="Follow my location" aria-label="Follow my location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="7.5"/></svg></button>
+      <button id="btnFit" title="Whole route" aria-label="Whole route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button id="btnLayer" title="Map style" aria-label="Map style"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="miter"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 13 10 5 10-5"/></svg></button>
+      <button id="btnSize" title="Bigger map" aria-label="Bigger map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg></button>
     </div>
   </div>
-  <div class="band"></div>
+
   <div id="panel">
-    <div id="status" title="Jump to where you are">
-      <div class="dot"></div>
-      <div style="flex:1;min-width:0">
-        <div class="st-main">Finding you…</div>
-        <div class="st-sub">Allow location access to see yourself on the route</div>
-        <div class="progress"><i></i></div>
+    <div id="dock" title="Jump to where you are">
+      <div class="dk-row">
+        <div class="dk-num tn">··</div>
+        <div class="dk-main"><div class="dk-t">Finding you…</div><div class="dk-s">Allow location to put yourself on the chart</div></div>
+        <div class="dk-km tn"><b>0.0</b><span id="dkTotal">of — km</span></div>
       </div>
+      <div class="strip" id="strip"></div>
     </div>
 
-    <header class="intro">
-      <h1>Istanbul on foot</h1>
-      <p class="lede">A two-continent loop from Karaköy: the old city, the Golden Horn's Greek and Jewish quarters, a ferry to Asia, the Üsküdar–Kadıköy shoreline and a ferry back. <span id="totals"></span></p>
-      <div class="chips">
-        <span class="chip" style="background:var(--blue)">● Classic sights</span>
-        <span class="chip" style="background:var(--terra)">◆ Curios &amp; easy-to-miss</span>
-        <span class="chip" style="background:var(--ochre)">● Food &amp; drink</span>
-        <span class="chip" style="background:var(--slate)">● Practical</span>
+    <img class="hero" src="img/hero.webp" alt="" onerror="this.remove()">
+    <div class="intro">
+      <h1>Istanbul <span>on foot</span></h1>
+      <p class="sub">A two-continent loop · Saturday 7 November</p>
+      <p class="lede">From Karaköy through the old city, along the Golden Horn's Greek and Jewish quarters, over the Bosphorus by ferry, down the Asian shore to Moda for sunset, and back across the water after dark.</p>
+      <div class="stats tn">
+        <div><b id="stKm">22</b><span>km on foot</span></div>
+        <div><b>2</b><span>ferries</span></div>
+        <div><b id="stStops">52</b><span>stops</span></div>
+        <div><b>16:50</b><span>sunset</span></div>
       </div>
-      <div class="note"><b>Sunset ≈ 16:50.</b> Aim to be on the ferry to Üsküdar by about 15:00 so you reach Moda for it. Times below are a guide only. Tap any card to expand it.</div>
-    </header>
+      <div class="filters" id="filters"></div>
+      <div class="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"><path d="M3 17h18M6 13.5a6 6 0 0 1 12 0M12 3.5v2.5M4.2 7.2l1.8 1.8M19.8 7.2 18 9M8 20.5h8"/></svg>
+        <div>Catch the Üsküdar ferry by about 15:00 to reach Moda for the sunset. Times are a guide, not a timetable. Tap any stop to open it.</div>
+      </div>
+    </div>
 
     <div id="sections"></div>
 
     <footer>
-      <p id="routenote">Snapping the route to streets…</p>
-      <p>Map tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © CARTO, Esri. Walking routes from the FOSSGIS OSRM service.</p>
-      <p>Opening hours and access change, so check anything that matters before you detour for it.</p>
+      <svg class="gull" viewBox="0 0 54 22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 12c6-7 12-7 16 0 4-7 10-7 16 0"/><path d="M36 8c4-4 8-4 10 0 2-4 5-4 7-1" stroke-width="1.1"/></svg>
+      <p>Walking lines follow real streets (OpenStreetMap walking directions via FOSSGIS OSRM). The main loop is about <span id="ftKm"></span> km, plus the optional evening leg.</p>
+      <p>Map tiles © Esri and contributors (World Topographic Map, recoloured), map data incl. © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>. Illustrations generated with Gemini in a house style made for this page.</p>
+      <p>Opening hours and access change, so check before you detour for anything.</p>
     </footer>
   </div>
 </div>
@@ -160,24 +240,22 @@ footer p{margin:6px 0}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 "use strict";
-/* ------------------------------------------------------------------ DATA */
 const KINDS = {
-  classic:   {label:'Classic',   c:'#1d4f91'},
-  curio:     {label:'Curio',     c:'#c0502b'},
-  food:      {label:'Food',      c:'#a87512'},
-  practical: {label:'Practical', c:'#56606f'}
+  classic:   {label:'Classic',   long:'Classic sights', c:'#0E4D2E'},
+  curio:     {label:'Curio',     long:'Curios',         c:'#8A5A2B'},
+  food:      {label:'Food',      long:'Food & drink',   c:'#587414'},
+  practical: {label:'Practical', long:'Practical',      c:'#2F6E5F'}
 };
-
 const SECTIONS = [
 {
   id:'s1', title:'Karaköy → Galata Bridge → Eminönü', time:'from 08:00', color:'#1d4f91', mode:'walk',
   desc:'Cross the Golden Horn on the bridge\'s upper deck, then dive into the spice-and-pigeon bustle of Eminönü.',
-  via:[[41.0227,28.9769],[41.0217,28.9760],[41.0210,28.9738],[41.0178,28.9724],[41.0170,28.9713],[41.0168,28.9700],[41.0176,28.9687]],
+  via:[[41.0227,28.9769],[41.0200,28.9733],[41.0168,28.9711],[41.0170,28.9693],[41.0176,28.9687]],
   places:[
-    {name:'Galata Bridge', kind:'classic', lat:41.0195, lng:28.9730,
+    {name:'Galata Bridge', img:'p-bridge-anglers', kind:'classic', lat:41.0195, lng:28.9730,
      short:'Anglers above, fish restaurants below',
      body:'There has been a bridge here since 1845; the current one opened in 1994. Walk the upper deck and weave between the fishing lines. The buckets of tiny istavrit (horse mackerel) often end up fried at stalls nearby.\n\nCurio: in 1502 Leonardo da Vinci sent Sultan Bayezid II a design for a single 240-metre span here. It was dismissed as impossible. A scaled-down version was finally built as a footbridge in Ås, Norway, in 2001.'},
-    {name:'Balık ekmek boats', kind:'food', lat:41.0172, lng:28.9734,
+    {name:'Balık ekmek boats', img:'p-balik-ekmek', kind:'food', lat:41.0172, lng:28.9734,
      short:'Grilled mackerel sandwiches from rocking boats',
      body:'On the Eminönü waterfront, gaudily decorated boats grill mackerel fillets and stuff them into bread with onion and salad. It\'s cheap and messy and very Istanbul.',
      tip:'Look out for the carts selling turşu suyu: neon-pink pickle juice, drunk as a chaser.'},
@@ -188,7 +266,7 @@ const SECTIONS = [
      short:'The "Egyptian Bazaar", built to fund the mosque',
      body:'This L-shaped covered market was built alongside the New Mosque in the 1660s, and its rents paid for the mosque\'s upkeep. The name comes from the Egyptian revenues that originally financed it.',
      tip:'The streets just west and south (Hasırcılar Cd) are where locals actually shop. Kurukahveci Mehmet Efendi has been roasting coffee on the corner since 1871, and you can follow the queue and the smell.'},
-    {name:'Rüstem Paşa Mosque', kind:'curio', lat:41.0177, lng:28.9688,
+    {name:'Rüstem Paşa Mosque', img:'p-rustem-pasa', kind:'curio', lat:41.0177, lng:28.9688,
      short:'A tiled jewel box hidden above a row of shops',
      body:'Sinan built it in the early 1560s for Rüstem Pasha, Süleyman\'s grand vizier and son-in-law. He raised it on a platform so the shops underneath could pay for it. The entrance is just a narrow stairway off the street, and most people walk straight past.\n\nInside, almost every surface is İznik tile, including tulip and carnation designs that are rare even by İznik standards. Many people rate them the best tiles in the city, and there\'s a fraction of the crowd.'}
   ]
@@ -198,28 +276,28 @@ const SECTIONS = [
   desc:'Up past the Orient Express station to the Byzantine and Ottoman heart of the city. Go early: the crowds build fast.',
   via:[[41.0176,28.9687],[41.0163,28.9712],[41.0158,28.9748],[41.0149,28.9768],[41.0128,28.9790],[41.0104,28.9796],[41.0087,28.9790],[41.0084,28.9779],[41.0074,28.9765],[41.0060,28.9754],[41.0050,28.9747],[41.0064,28.9748],[41.0080,28.9752]],
   places:[
-    {name:'Sirkeci Station', kind:'curio', lat:41.0150, lng:28.9770,
+    {name:'Sirkeci Station', img:'p-sirkeci', kind:'curio', lat:41.0150, lng:28.9770,
      short:'The eastern terminus of the Orient Express',
      body:'Opened in 1890 and designed by the German architect August Jasmund in an Orientalist style, with stained glass and a clock tower. This is where passengers from Paris stepped off. A small railway museum inside has Orient Express crockery and old equipment.'},
-    {name:'Hagia Sophia', kind:'classic', lat:41.0086, lng:28.9802,
+    {name:'Hagia Sophia', img:'p-viking-runes', kind:'classic', lat:41.0086, lng:28.9802,
      short:'Built in 537: church, mosque, museum and mosque again',
      body:'For nearly a thousand years this was the largest cathedral in the world. Since 2024, foreign visitors pay and are routed to the upper galleries only, which is handy, because that\'s where the curio is.\n\nCurio: on the marble parapet of the upper gallery, a Viking scratched runes in the 9th century. They read roughly "Halfdan carved these runes", and they\'re now under a protective cover. A second runic graffito was found in 1975.',
      tip:'If the queue is huge, you can visit the Ottoman royal tombs in the courtyard to the south for free. Selim II\'s has superb tiles.'},
     {name:'Milion', kind:'curio', lat:41.0086, lng:28.9768,
      short:'Mile zero of the Byzantine Empire',
      body:'This stubby marble pillar near the Basilica Cistern entrance is all that remains of a monumental arch. Every road distance in the empire was measured from it, making it the eastern twin of Rome\'s Golden Milestone. Almost nobody stops.'},
-    {name:'Basilica Cistern', kind:'classic', lat:41.0084, lng:28.9779,
+    {name:'Basilica Cistern', img:'p-cistern', kind:'classic', lat:41.0084, lng:28.9779,
      short:'Justinian\'s underground forest of 336 columns',
      body:'A 6th-century reservoir that once held water for the Great Palace. Two of the column bases are recycled Medusa heads, one on its side and one upside down. Nobody quite knows why.',
      tip:'Tickets are pricey and queues long. The smaller Şerefiye (Theodosius) Cistern, five minutes west on Piyer Loti Cd, is cheaper and quieter.'},
     {name:'Blue Mosque (Sultan Ahmed)', kind:'classic', lat:41.0054, lng:28.9768,
      short:'Six minarets and 20,000 İznik tiles',
      body:'Built in 1609–16 for the 19-year-old Ahmed I. The story goes that its six minarets caused a scandal because only Mecca had six, so the sultan paid for a seventh there. Entry is free, but the mosque closes to visitors around prayer times. Cover shoulders and knees.'},
-    {name:'Hippodrome', kind:'curio', lat:41.0059, lng:28.9752,
+    {name:'Hippodrome', img:'p-hippodrome', kind:'curio', lat:41.0059, lng:28.9752,
      short:'A 3,500-year-old obelisk and a snake from Delphi',
      body:'Constantinople\'s chariot-racing track is now a long park, with three oddities in a row:\n\nObelisk of Theodosius: carved for Thutmose III around 1450 BC at Karnak and re-erected here in 390 AD. Its marble base shows the emperor watching the races.\n\nSerpent Column: the bronze stump of a monument cast from captured Persian weapons after the Battle of Plataea (479 BC). It stood at Delphi until Constantine brought it here.\n\nWalled Obelisk: once sheathed in gilded bronze, which the Crusaders stripped off in 1204.',
      tip:'The domed fountain at the north end was a gift from Kaiser Wilhelm II in 1900.'},
-    {name:'Sokollu Mehmed Paşa Mosque', kind:'curio', lat:41.0036, lng:28.9714,
+    {name:'Sokollu Mehmed Paşa Mosque', img:'p-sokollu', kind:'curio', lat:41.0036, lng:28.9714,
      short:'Detour: fragments of the Kaaba\'s Black Stone',
      body:'A five-minute walk downhill from the Hippodrome. Sinan built this small mosque in 1571–72, and it has some of the finest İznik tilework anywhere. Tiny slivers of the Black Stone from Mecca are set above the entrance, the mihrab and the minbar.',
      tip:'Opening can be irregular. Carry on downhill to Little Hagia Sophia (530s), the trial run for the big one.'}
@@ -230,7 +308,7 @@ const SECTIONS = [
   desc:'Along the old imperial avenue, through the covered bazaar and up to Sinan\'s masterpiece on the city\'s third hill.',
   via:[[41.0080,28.9752],[41.0087,28.9718],[41.0102,28.9709],[41.0107,28.9690],[41.0104,28.9665],[41.0101,28.9655],[41.0118,28.9668],[41.0128,28.9674],[41.0145,28.9660],[41.0158,28.9651]],
   places:[
-    {name:'Column of Constantine (Çemberlitaş)', kind:'curio', lat:41.0087, lng:28.9716,
+    {name:'Column of Constantine (Çemberlitaş)', img:'p-constantine', kind:'curio', lat:41.0087, lng:28.9716,
      short:'The founding monument of Constantinople, 330 AD',
      body:'A blackened porphyry column held together with iron hoops, which give it its Turkish name, "the Hooped Stone". Constantine set it up when he made the city his capital. Legend says he buried a hoard of relics underneath it, including Noah\'s adze, the baskets from the loaves and fishes, and the Palladium of Troy.'},
     {name:'Grand Bazaar', kind:'classic', lat:41.0107, lng:28.9681,
@@ -240,15 +318,15 @@ const SECTIONS = [
     {name:'Sahaflar Çarşısı', kind:'curio', lat:41.0102, lng:28.9654,
      short:'The old book bazaar, on the site of Byzantium\'s paper market',
      body:'A shady courtyard of booksellers between the bazaar\'s Beyazıt gate and the Beyazıt Mosque. In Byzantine times this was the Chartoprateia, the paper and book market. The bust in the middle is of İbrahim Müteferrika, who ran the first Ottoman printing press from 1727.'},
-    {name:'Büyük Valide Han', kind:'curio', lat:41.0127, lng:28.9672,
+    {name:'Büyük Valide Han', img:'p-valide-han', kind:'curio', lat:41.0127, lng:28.9672,
      short:'A crumbling 1651 caravanserai with a famous roof',
      body:'Built by Kösem Sultan, one of the most powerful women in Ottoman history. Its three courtyards are now a warren of workshops, and you can sometimes hear looms clattering. The rooftop panorama (and the Skyfall motorbike chase) made it famous.',
      tip:'Roof access is unofficial and comes and goes. Sometimes someone will offer to take you up for a tip.'},
-    {name:'Süleymaniye Mosque', kind:'classic', lat:41.0160, lng:28.9640,
+    {name:'Süleymaniye Mosque', img:'p-suleymaniye', kind:'classic', lat:41.0160, lng:28.9640,
      short:'Sinan\'s 1550s masterpiece, with the best view in the old city',
      body:'Built for Süleyman the Magnificent in 1550–57. Its scale and calm put the Blue Mosque in perspective. Süleyman and his wife Hürrem are buried in tombs in the garden.\n\nCurio: the story goes that Sinan designed the airflow so that soot from the thousands of oil lamps collected in a chamber above the courtyard entrance, where it was scraped off to make ink.',
      tip:'The garden terrace behind the mosque looks straight down the Golden Horn.'},
-    {name:'Beans on "Addicts\' Street"', kind:'food', lat:41.0158, lng:28.9632,
+    {img:'p-fasulye', name:'Beans on "Addicts\' Street"', kind:'food', lat:41.0158, lng:28.9632,
      short:'Kuru fasulye on the old Tiryakiler Çarşısı',
      body:'The row of eateries facing the mosque was nicknamed the Addicts\' Market after the coffee (and reputedly opium) dens that once lined it. Erzincanlı Ali Baba has served white-bean stew with rice and pickles here since 1924. It makes a good, quick, very local lunch.'},
     {name:'Tomb of Mimar Sinan', kind:'curio', lat:41.0172, lng:28.9648,
@@ -261,34 +339,34 @@ const SECTIONS = [
   desc:'Leave the tourists behind. Pass a Roman aqueduct and Byzantine monasteries, then reach the old Greek and Jewish quarters on the Golden Horn. This is the place for lunch.',
   via:[[41.0158,28.9651],[41.0170,28.9646],[41.0163,28.9610],[41.0155,28.9584],[41.0160,28.9560],[41.0193,28.9575],[41.0225,28.9582],[41.0250,28.9585],[41.0272,28.9548],[41.0289,28.9522],[41.0291,28.9505],[41.0295,28.9481],[41.0300,28.9470],[41.0318,28.9463],[41.0334,28.9458],[41.0330,28.9480],[41.0317,28.9496]],
   places:[
-    {name:'Vefa Bozacısı', kind:'food', lat:41.0155, lng:28.9584,
+    {name:'Vefa Bozacısı', img:'p-boza', kind:'food', lat:41.0155, lng:28.9584,
      short:'Fermented millet drink, served since 1876',
      body:'Boza is thick, tangy and slightly sour, dusted with cinnamon and eaten with roasted chickpeas. It\'s a winter drink, so you\'re here at the right time. The glass Atatürk drank from in 1937 is displayed in a case on the wall.'},
-    {name:'Valens Aqueduct', kind:'classic', lat:41.0160, lng:28.9558,
+    {name:'Valens Aqueduct', img:'p-valens', kind:'classic', lat:41.0160, lng:28.9558,
      short:'Roman, finished in 368 AD, still standing over the traffic',
      body:'Almost a kilometre of double arches survives. It carried water into the city for some 1,400 years, through the Byzantine and Ottoman eras alike. Today a six-lane boulevard runs through it.'},
     {name:'Zeyrek Mosque (Pantokrator)', kind:'curio', lat:41.0197, lng:28.9577,
      short:'A 12th-century Byzantine imperial monastery',
      body:'Built in 1118–36 by the Komnenos dynasty as a monastery and family mausoleum, it\'s one of the largest surviving Byzantine churches after Hagia Sophia. It became a mosque after 1453. The surrounding lanes of wooden Ottoman houses are part of the UNESCO-listed historic area.'},
-    {name:'Ecumenical Patriarchate', kind:'curio', lat:41.0292, lng:28.9517,
+    {name:'Ecumenical Patriarchate', img:'p-patriarchate', kind:'curio', lat:41.0292, lng:28.9517,
      short:'The welded-shut gate of Orthodoxy\'s headquarters',
      body:'This has been the seat of the Ecumenical Patriarch, the "first among equals" of Orthodox Christianity, since 1601. The main gate is painted black and has been welded shut since 1821, when Patriarch Gregory V was hanged from it at the outbreak of the Greek War of Independence. Visitors use the side entrance.',
      tip:'The church of St George is open roughly 08:00–16:00. Modest dress is expected.'},
     {name:'The "Red Castle"', kind:'curio', lat:41.0293, lng:28.9496,
      short:'Phanar Greek Orthodox College',
      body:'This hulking red-brick building from 1881–83 looms over Fener like a fortress. The school itself traces its roots back to 1454, making it one of the oldest in the city. It\'s best seen from the lanes below.'},
-    {name:'St Mary of the Mongols', kind:'curio', lat:41.0296, lng:28.9479,
+    {name:'St Mary of the Mongols', img:'p-st-mary', kind:'curio', lat:41.0296, lng:28.9479,
      short:'The only Byzantine church never turned into a mosque',
      body:'Founded by Maria Palaiologina, an emperor\'s daughter who was sent to marry the Mongol Ilkhan Abaqa. She returned a widow and became a nun. After 1453, a decree of Mehmed II let the Greeks keep it, and it has been a church ever since.',
      tip:'Opening is irregular. If the gate is shut, try ringing the bell.'},
     {name:'Balat streets', kind:'classic', lat:41.0302, lng:28.9472,
      short:'Painted houses, stair-streets and a real neighbourhood',
      body:'Kiremit Caddesi\'s colourful houses and the Merdivenli Yokuş stair-street are the photogenic bit. Wander the side lanes for the actual neighbourhood: laundry lines, tea houses and antique dealers. This was historically a Jewish, Greek and Armenian quarter.'},
-    {name:'Ahrida Synagogue', kind:'curio', lat:41.0336, lng:28.9461,
+    {name:'Ahrida Synagogue', img:'p-ahrida', kind:'curio', lat:41.0336, lng:28.9461,
      short:'Istanbul\'s oldest synagogue, with a ship-shaped pulpit',
      body:'Founded before 1453 by Jews from Ohrid, in today\'s North Macedonia. Its bimah is shaped like a ship\'s prow. It\'s said to represent Noah\'s Ark, or the Ottoman ships that brought Sephardic refugees from Spain in 1492.',
      tip:'Visits are by prior arrangement only, so expect to see just the outside.'},
-    {name:'Bulgarian Iron Church (St Stephen)', kind:'curio', lat:41.0316, lng:28.9495,
+    {name:'Bulgarian Iron Church (St Stephen)', img:'p-iron-church', kind:'curio', lat:41.0316, lng:28.9495,
      short:'A whole church prefabricated in Vienna',
      body:'The cast-iron parts were made in Vienna, shipped down the Danube and across the Black Sea, and bolted together here by 1898. It\'s a defiant symbol of the Bulgarian church\'s break from the Greek Patriarchate in 1870, which is a few hundred metres down the road. Restored and reopened in 2018.'},
     {name:'Chora (Kariye)', kind:'classic', lat:41.0312, lng:28.9391,
@@ -321,26 +399,26 @@ const SECTIONS = [
 {
   id:'s7', title:'Üsküdar → Salacak → Harem → Kadıköy', time:'~15:10', color:'#d17a22', mode:'walk',
   desc:'The Asian shoreline: Sinan mosques by the water, the best view back to the old city, and Crimean War history on the way to Kadıköy.',
-  via:[[41.0272,29.0138],[41.0265,29.0152],[41.0258,29.0130],[41.0249,29.0108],[41.0225,29.0080],[41.0200,29.0075],[41.0165,29.0090],[41.0120,29.0105],[41.0080,29.0130],[41.0045,29.0165],[41.0005,29.0185],[40.9975,29.0195],[40.9945,29.0215],[40.9928,29.0225]],
+  via:[[41.0272,29.0138],[41.0265,29.0152],[41.0258,29.0130],[41.0249,29.0108],[41.0225,29.0080],[41.0200,29.0075],[41.0165,29.0090],[41.0120,29.0105],[41.0088,29.0168],[40.9928,29.0225]],
   places:[
-    {name:'Mihrimah Sultan Mosque', kind:'classic', lat:41.0267, lng:29.0156,
+    {name:'Mihrimah Sultan Mosque', img:'p-mihrimah', kind:'classic', lat:41.0267, lng:29.0156,
      short:'Sinan\'s 1548 mosque on the Üsküdar pier',
      body:'Built for Süleyman\'s daughter Mihrimah and raised on a terrace above the square.\n\nLegend: Sinan was supposedly in love with her. Her two mosques, this one and another at Edirnekapı on the far side of the city, are said to be aligned so that on her birthday the sun sets behind one as the moon rises over the other. It\'s lovely and almost certainly untrue.'},
     {name:'Şemsi Paşa Mosque', kind:'curio', lat:41.0250, lng:29.0112,
      short:'Sinan\'s tiniest gem, practically in the sea',
      body:'A small mosque and tomb from 1580, set right on the water\'s edge. It\'s one of the most charming of Sinan\'s small works and easy to miss on the way to Salacak.'},
-    {name:'Maiden\'s Tower & Salacak', kind:'classic', lat:41.0211, lng:29.0041,
+    {name:'Maiden\'s Tower & Salacak', img:'p-maidens-tower', kind:'classic', lat:41.0211, lng:29.0041,
      short:'A tower on a rock, and the best view back to Europe',
      body:'There has been a tower on this islet since Byzantine times. The current building is largely 18th-century, and it reopened in 2023 after restoration. In the legend, a sultan is told his daughter will die of a snakebite, so he locks her in the tower, and the snake arrives in a basket of fruit. Its Western name, Leander\'s Tower, borrows a Greek myth that actually happened at the Dardanelles.',
      tip:'The Salacak shoreline has tea gardens with a full panorama: Topkapı, Hagia Sophia, the Blue Mosque and Süleymaniye, all in a row.'},
-    {name:'Selimiye Barracks', kind:'curio', lat:41.0058, lng:29.0142,
+    {name:'Selimiye Barracks', img:'p-selimiye', kind:'curio', lat:41.0058, lng:29.0142,
      short:'Where Florence Nightingale worked',
      body:'This enormous barracks served as the British hospital during the Crimean War, and Nightingale worked here in 1854–56. Her rooms in one corner tower are a small museum. The building is still military, so visits need permission arranged in advance; today it\'s an outside view only.'},
-    {name:'Haidar Pasha Cemetery', kind:'curio', lat:41.0012, lng:29.0178,
+    {name:'Haidar Pasha Cemetery', img:'p-haidar-cemetery', kind:'curio', lat:41.0012, lng:29.0178,
      short:'A quiet British military cemetery',
      body:'Graves of soldiers who died in the Scutari hospitals during the Crimean War, along with WWI and later burials. There\'s also a granite memorial by Marochetti from 1857. It\'s an unexpected patch of English-style calm.',
      tip:'The gate isn\'t obvious, and you may need to ring or ask.'},
-    {name:'Haydarpaşa Station', kind:'curio', lat:40.9968, lng:29.0193,
+    {name:'Haydarpaşa Station', img:'p-haydarpasa', kind:'curio', lat:40.9968, lng:29.0193,
      short:'A German castle at the end of the Baghdad Railway',
      body:'Built in 1908 by German architects as the terminus of the Berlin–Baghdad railway project. It sits on the water like a Rhineland fortress. It has been out of mainline use and under restoration for years, and excavations in front have turned up the harbour of ancient Chalcedon.'}
   ]
@@ -350,10 +428,10 @@ const SECTIONS = [
   desc:'The Asian side\'s liveliest district: market lanes, then the Moda shoreline for sunset over the Sea of Marmara.',
   via:[[40.9928,29.0225],[40.9910,29.0245],[40.9900,29.0262],[40.9885,29.0275],[40.9873,29.0300],[40.9850,29.0290],[40.9825,29.0270],[40.9803,29.0262],[40.9830,29.0245],[40.9870,29.0240],[40.9905,29.0232],[40.9928,29.0222]],
   places:[
-    {name:'Chalcedon, the "City of the Blind"', kind:'curio', lat:40.9915, lng:29.0240,
+    {name:'Chalcedon, the "City of the Blind"', img:'p-chalcedon', kind:'curio', lat:40.9915, lng:29.0240,
      short:'Older than Byzantium, and mocked for it',
      body:'Kadıköy is ancient Chalcedon, founded about 17 years before Byzantium across the water. Herodotus records the Persian general Megabazus saying its founders must have been blind to pick this spot when the far better site opposite was free. Later it hosted the Council of Chalcedon (451), which split Christianity over the nature of Christ.'},
-    {name:'Kadıköy market lanes', kind:'food', lat:40.9903, lng:29.0255,
+    {name:'Kadıköy market lanes', img:'p-kadikoy-market', kind:'food', lat:40.9903, lng:29.0255,
      short:'Fishmongers, pickle shops, meze counters',
      body:'Graze through the pedestrian streets. Çiya Sofrası serves regional Anatolian dishes you won\'t find elsewhere, and it\'s a good place to point at things. Baylan is an old-school patisserie founded in the 1920s.',
      tip:'The stuffed mussels (midye dolma) sold everywhere are shellfish, so skip those.'},
@@ -383,10 +461,10 @@ const SECTIONS = [
   desc:'If you have anything left in your legs, go uphill from Karaköy through Galata to İstiklal. Taksim has the metro if you need it.',
   via:[[41.0218,28.9783],[41.0228,28.9775],[41.0234,28.9762],[41.0243,28.9750],[41.0247,28.9743],[41.0256,28.9741],[41.0272,28.9740],[41.0285,28.9742],[41.0294,28.9745],[41.0310,28.9752],[41.0318,28.9742],[41.0325,28.9765],[41.0343,28.9783],[41.0369,28.9850]],
   places:[
-    {name:'Karaköy Güllüoğlu', kind:'food', lat:41.0231, lng:28.9778,
+    {name:'Karaköy Güllüoğlu', img:'p-baklava', kind:'food', lat:41.0231, lng:28.9778,
      short:'Baklava in Karaköy since 1949',
      body:'Arguably the city\'s most famous baklava shop. Try the pistachio, or the söbiyet (cream-filled), with tea. Eat in, standing at the counter.'},
-    {name:'Underground Mosque (Yeraltı Camii)', kind:'curio', lat:41.0234, lng:28.9762,
+    {name:'Underground Mosque (Yeraltı Camii)', img:'p-yeralti', kind:'curio', lat:41.0234, lng:28.9762,
      short:'A mosque in a Byzantine cellar',
      body:'A low, pillared vault turned into a mosque in 1757. It\'s believed to be part of the Byzantine castle of Galata, the fortress that anchored the great chain stretched across the Golden Horn to keep enemy fleets out. Inside are the tombs of two Arab warriors said to have died in the 7th–8th-century sieges.'},
     {name:'Bankalar Caddesi & SALT Galata', kind:'curio', lat:41.0243, lng:28.9750,
@@ -396,18 +474,18 @@ const SECTIONS = [
     {name:'Kamondo Stairs', kind:'curio', lat:41.0247, lng:28.9743,
      short:'Curving Art Nouveau-ish double staircase',
      body:'These elegant interlocking stairs, from around 1870–80, were paid for by Abraham Salomon Camondo of the Jewish banking dynasty to link his bank with his home. Henri Cartier-Bresson photographed them in 1964.'},
-    {name:'Galata Tower', kind:'classic', lat:41.0256, lng:28.9741,
+    {name:'Galata Tower', img:'p-hezarfen', kind:'classic', lat:41.0256, lng:28.9741,
      short:'Genoese, 1348',
      body:'Built as the high point of the Genoese colony\'s walls. According to the 17th-century writer Evliya Çelebi, Hezarfen Ahmed Çelebi strapped on wings, jumped from the top and glided all the way across the Bosphorus to Üsküdar, where you were this afternoon. The sultan supposedly rewarded him with gold, then exiled him for being too dangerous.',
      tip:'Queues to go up are long. It looks best from the surrounding lanes anyway.'},
-    {name:'Galata Mevlevi Lodge', kind:'curio', lat:41.0283, lng:28.9741,
+    {name:'Galata Mevlevi Lodge', img:'p-mevlevi', kind:'curio', lat:41.0283, lng:28.9741,
      short:'A whirling dervish lodge from 1491',
      body:'The oldest Mevlevi lodge in Istanbul, now a museum with a beautiful wooden octagonal semahane (ceremony hall) and a peaceful graveyard of turban-topped tombstones.',
      tip:'Sema (whirling) ceremonies happen on some evenings. Check at the gate.'},
     {name:'Tünel', kind:'curio', lat:41.0295, lng:28.9747,
      short:'The world\'s second-oldest underground railway',
      body:'Opened in 1875, twelve years after London\'s Metropolitan line. It\'s a 573-metre funicular that saved 19th-century bankers the climb from Karaköy up to Pera. The upper station is at the bottom of İstiklal.'},
-    {name:'Pera Palace Hotel', kind:'curio', lat:41.0318, lng:28.9738,
+    {name:'Pera Palace Hotel', img:'p-pera-palace', kind:'curio', lat:41.0318, lng:28.9738,
      short:'Built for Orient Express passengers, 1892',
      body:'The grand hotel where Orient Express travellers stayed. Agatha Christie is said to have written part of Murder on the Orient Express in room 411, and Atatürk\'s room 101 is kept as a museum. The lobby and patisserie are open to non-guests.'},
     {name:'Çiçek Pasajı', kind:'classic', lat:41.0344, lng:28.9781,
@@ -419,254 +497,246 @@ const SECTIONS = [
   ]
 }
 ];
+const ROUTES = {"s1":[[41.02277,28.97697],[41.02291,28.97673],[41.02296,28.97655],[41.02296,28.97635],[41.02295,28.97616],[41.02294,28.97596],[41.02293,28.97583],[41.02291,28.97568],[41.02288,28.97553],[41.0228,28.97544],[41.02272,28.9753],[41.02265,28.97527],[41.02245,28.97518],[41.02246,28.97508],[41.02241,28.97511],[41.02233,28.97512],[41.02227,28.97508],[41.02222,28.97504],[41.02206,28.97491],[41.02193,28.97469],[41.02182,28.9746],[41.02175,28.97455],[41.02153,28.97439],[41.02098,28.97399],[41.02001,28.97329],[41.01953,28.97294],[41.01867,28.97232],[41.01827,28.97203],[41.0182,28.97198],[41.01813,28.97195],[41.01805,28.97195],[41.01798,28.97196],[41.01787,28.972],[41.01778,28.97209],[41.01772,28.9722],[41.01771,28.97232],[41.01769,28.97252],[41.01767,28.97259],[41.01765,28.97269],[41.01764,28.97282],[41.0176,28.97337],[41.01756,28.97375],[41.01753,28.97391],[41.01752,28.97399],[41.01746,28.97396],[41.01739,28.97394],[41.0173,28.97392],[41.01728,28.97381],[41.0173,28.97364],[41.01738,28.97299],[41.01739,28.97284],[41.01733,28.97282],[41.01718,28.97279],[41.01719,28.97267],[41.01723,28.97253],[41.01726,28.97245],[41.01738,28.97221],[41.01745,28.97195],[41.01747,28.97151],[41.01725,28.97128],[41.01688,28.97094],[41.01642,28.97052],[41.01651,28.97036],[41.01697,28.96956],[41.01705,28.9694],[41.01727,28.96897],[41.01734,28.96883],[41.01745,28.96862],[41.01749,28.96867],[41.01754,28.96861]],"s2":[[41.01754,28.96861],[41.01749,28.96867],[41.01745,28.96862],[41.01734,28.96883],[41.01727,28.96897],[41.01705,28.9694],[41.01697,28.96956],[41.01656,28.97036],[41.01642,28.97052],[41.01617,28.97101],[41.01625,28.9711],[41.01626,28.97121],[41.01634,28.97133],[41.01633,28.97141],[41.01635,28.97149],[41.01664,28.97191],[41.01648,28.97212],[41.01641,28.97222],[41.01637,28.97234],[41.01635,28.97244],[41.01604,28.97311],[41.01598,28.97318],[41.01595,28.97324],[41.01586,28.97347],[41.01556,28.97437],[41.0155,28.97447],[41.01564,28.97459],[41.01571,28.97484],[41.0158,28.97538],[41.01575,28.97545],[41.01564,28.97546],[41.01545,28.9759],[41.0155,28.97596],[41.01553,28.97602],[41.01551,28.97612],[41.0155,28.9762],[41.01553,28.97629],[41.01553,28.97637],[41.01544,28.97637],[41.01534,28.97634],[41.01525,28.97633],[41.01503,28.97633],[41.01497,28.97633],[41.01492,28.97659],[41.01492,28.9768],[41.01492,28.97697],[41.01479,28.97696],[41.01478,28.97705],[41.0147,28.97702],[41.01467,28.97693],[41.01434,28.97678],[41.0143,28.9767],[41.01429,28.9766],[41.01423,28.97668],[41.01382,28.97706],[41.01352,28.97734],[41.01301,28.97785],[41.01276,28.97817],[41.0127,28.97824],[41.01252,28.97849],[41.01244,28.97855],[41.01249,28.97866],[41.01246,28.97884],[41.0124,28.97896],[41.01256,28.97901],[41.01279,28.97905],[41.01256,28.97901],[41.0124,28.97896],[41.01234,28.9792],[41.01229,28.9794],[41.01214,28.97929],[41.01182,28.9791],[41.01165,28.97908],[41.01063,28.97898],[41.01057,28.9789],[41.01052,28.97882],[41.01046,28.97882],[41.01042,28.97895],[41.01023,28.97922],[41.01018,28.97928],[41.01011,28.97936],[41.00992,28.97945],[41.00982,28.97952],[41.00973,28.97961],[41.00939,28.97933],[41.00904,28.97906],[41.00888,28.97894],[41.00856,28.97868],[41.0085,28.97861],[41.00845,28.97858],[41.00823,28.97848],[41.00822,28.97858],[41.00819,28.97864],[41.00833,28.97874],[41.00849,28.97886],[41.00866,28.97902],[41.00849,28.97886],[41.00833,28.97874],[41.00819,28.97864],[41.00822,28.97858],[41.00823,28.97848],[41.00825,28.97838],[41.0083,28.97826],[41.0084,28.97808],[41.00845,28.97802],[41.0084,28.97808],[41.00831,28.9782],[41.00825,28.97826],[41.00818,28.97833],[41.00808,28.97834],[41.00802,28.9783],[41.00791,28.97816],[41.00783,28.97795],[41.00779,28.97775],[41.00779,28.97754],[41.00785,28.97707],[41.00756,28.97677],[41.00766,28.97662],[41.00756,28.97661],[41.00748,28.97657],[41.00742,28.97651],[41.00733,28.97643],[41.00724,28.97634],[41.00704,28.97615],[41.00644,28.97552],[41.0063,28.97539],[41.00613,28.97523],[41.00606,28.97517],[41.00599,28.97531],[41.00602,28.97538],[41.00601,28.97546],[41.00597,28.97551],[41.0059,28.97552],[41.00584,28.97556],[41.00556,28.97529],[41.00552,28.97537],[41.00526,28.9751],[41.00505,28.97489],[41.00507,28.97477],[41.00516,28.9746],[41.00522,28.97459],[41.00529,28.97453],[41.00537,28.97451],[41.00552,28.97462],[41.00571,28.9748],[41.00578,28.97488],[41.00606,28.97517],[41.00613,28.97523],[41.00616,28.97516],[41.00625,28.97499],[41.00616,28.97516],[41.00623,28.97523],[41.00693,28.97597],[41.00707,28.9761],[41.00727,28.97629],[41.00733,28.97618],[41.00745,28.97599],[41.00752,28.97589],[41.0076,28.97583],[41.00769,28.9758],[41.00784,28.9758],[41.00787,28.97529],[41.00805,28.9753],[41.00805,28.97521]],"s3":[[41.00805,28.97521],[41.00811,28.97519],[41.00813,28.97512],[41.00818,28.97507],[41.00823,28.97439],[41.00827,28.97392],[41.00831,28.97341],[41.00836,28.97278],[41.00838,28.97246],[41.00839,28.97237],[41.00845,28.97176],[41.00847,28.9716],[41.00873,28.97136],[41.00941,28.97114],[41.01017,28.97124],[41.01017,28.97105],[41.01014,28.97093],[41.01004,28.97049],[41.01007,28.97031],[41.01009,28.96999],[41.01012,28.96963],[41.01014,28.96931],[41.01015,28.9692],[41.01015,28.96911],[41.01032,28.96905],[41.01047,28.969],[41.01073,28.96893],[41.01071,28.96879],[41.01065,28.96848],[41.01061,28.96823],[41.01059,28.96804],[41.01057,28.96784],[41.01056,28.9677],[41.01054,28.96756],[41.01053,28.96746],[41.01047,28.96734],[41.01043,28.96728],[41.01039,28.96723],[41.01029,28.96718],[41.01022,28.96715],[41.01011,28.96705],[41.01006,28.96695],[41.01003,28.96684],[41.01023,28.96682],[41.01027,28.96664],[41.01025,28.96651],[41.01027,28.96644],[41.01025,28.96635],[41.00996,28.96645],[41.00987,28.96647],[41.00971,28.96645],[41.00963,28.96643],[41.00959,28.96582],[41.00946,28.96562],[41.00948,28.96549],[41.00955,28.96519],[41.00964,28.965],[41.00978,28.96493],[41.00986,28.96485],[41.00996,28.96474],[41.01009,28.96459],[41.01028,28.96492],[41.01035,28.96502],[41.01035,28.96511],[41.01037,28.96519],[41.01043,28.96522],[41.01049,28.96526],[41.01054,28.96534],[41.01063,28.96537],[41.01079,28.96524],[41.01092,28.96488],[41.01108,28.96514],[41.01115,28.96508],[41.01166,28.96592],[41.0117,28.96601],[41.0117,28.9661],[41.01173,28.96651],[41.01183,28.96652],[41.01185,28.96675],[41.01186,28.96684],[41.01192,28.96721],[41.01196,28.96746],[41.01221,28.96749],[41.01247,28.96749],[41.01253,28.96749],[41.01279,28.96749],[41.01285,28.96748],[41.01284,28.96739],[41.01285,28.96748],[41.01288,28.96755],[41.01322,28.9675],[41.01349,28.96748],[41.01358,28.96747],[41.01379,28.96744],[41.014,28.96744],[41.01416,28.96743],[41.01453,28.96743],[41.01453,28.96673],[41.01453,28.966],[41.01496,28.96597],[41.01496,28.96587],[41.01496,28.9657],[41.01495,28.9655],[41.01497,28.96522],[41.01509,28.96522],[41.01557,28.96527],[41.01563,28.96519],[41.0157,28.96512],[41.01576,28.96504]],"s4":[[41.01576,28.96504],[41.0157,28.96512],[41.01563,28.96519],[41.01567,28.96525],[41.01577,28.9654],[41.01579,28.96553],[41.01597,28.96559],[41.0162,28.9657],[41.01633,28.96576],[41.01661,28.96579],[41.01678,28.9654],[41.01711,28.96469],[41.01715,28.9646],[41.01723,28.96441],[41.0173,28.96407],[41.01738,28.96369],[41.0174,28.96354],[41.01728,28.96351],[41.01723,28.96346],[41.01715,28.96337],[41.01689,28.96302],[41.01637,28.96234],[41.01598,28.96175],[41.01575,28.96146],[41.0157,28.96138],[41.01566,28.96131],[41.01564,28.96124],[41.01572,28.96124],[41.01571,28.9609],[41.01571,28.96079],[41.01573,28.96093],[41.01589,28.96094],[41.01589,28.9612],[41.01628,28.9612],[41.0163,28.961],[41.01628,28.9612],[41.01589,28.9612],[41.01589,28.96094],[41.01577,28.96093],[41.01573,28.9608],[41.01571,28.96067],[41.01572,28.96056],[41.01575,28.96047],[41.01578,28.96037],[41.01582,28.96025],[41.01585,28.96013],[41.01587,28.96006],[41.01592,28.95991],[41.01594,28.95983],[41.01594,28.95972],[41.01589,28.95963],[41.01559,28.9594],[41.01545,28.95929],[41.0157,28.95883],[41.01541,28.95859],[41.01512,28.95836],[41.01518,28.95823],[41.01545,28.9577],[41.01588,28.95682],[41.01594,28.9567],[41.01624,28.95613],[41.01613,28.95607],[41.01606,28.95603],[41.01601,28.95598],[41.01606,28.95603],[41.01613,28.95607],[41.01624,28.95613],[41.01652,28.95636],[41.0168,28.95659],[41.01684,28.95651],[41.0169,28.95639],[41.01695,28.95642],[41.01717,28.95662],[41.01727,28.9567],[41.01741,28.95641],[41.01744,28.95634],[41.01776,28.95575],[41.01799,28.95605],[41.01804,28.95613],[41.01837,28.9566],[41.01848,28.95675],[41.0186,28.95686],[41.01875,28.95664],[41.01893,28.95682],[41.01924,28.95716],[41.01939,28.95727],[41.01958,28.9574],[41.01973,28.95748],[41.01987,28.95755],[41.01998,28.95728],[41.02021,28.95747],[41.02029,28.95728],[41.0205,28.95695],[41.0206,28.95708],[41.02082,28.95727],[41.02103,28.95672],[41.0211,28.95682],[41.02117,28.95688],[41.02123,28.95693],[41.02119,28.95706],[41.02129,28.95715],[41.0215,28.9573],[41.02162,28.95736],[41.02177,28.95747],[41.02183,28.95747],[41.02214,28.95754],[41.02213,28.95788],[41.02218,28.95796],[41.02246,28.95804],[41.02251,28.95819],[41.02257,28.95829],[41.0227,28.95815],[41.0228,28.95797],[41.02285,28.95805],[41.02285,28.95818],[41.02297,28.95842],[41.02302,28.95836],[41.0232,28.95816],[41.02338,28.95795],[41.02357,28.95819],[41.02376,28.95827],[41.02388,28.95837],[41.02396,28.95826],[41.0241,28.95806],[41.02424,28.95813],[41.02437,28.95827],[41.02453,28.95843],[41.02458,28.95837],[41.02468,28.95805],[41.02487,28.95837],[41.02494,28.95833],[41.02487,28.95837],[41.02468,28.95805],[41.02474,28.95797],[41.02483,28.95782],[41.02497,28.95766],[41.02506,28.95755],[41.02519,28.95743],[41.02533,28.95738],[41.02544,28.95728],[41.02566,28.95712],[41.02584,28.95701],[41.02591,28.95677],[41.02594,28.9567],[41.02603,28.95633],[41.02613,28.95605],[41.02626,28.95593],[41.0265,28.95565],[41.02664,28.95546],[41.0268,28.95529],[41.02701,28.95504],[41.02715,28.95487],[41.02732,28.95504],[41.02764,28.95524],[41.02809,28.9554],[41.02821,28.95541],[41.02822,28.95527],[41.02825,28.9551],[41.02827,28.95493],[41.0283,28.9548],[41.02835,28.9546],[41.0284,28.95439],[41.02848,28.95408],[41.02848,28.95394],[41.02846,28.95374],[41.02844,28.95334],[41.02847,28.95296],[41.02852,28.95282],[41.02861,28.95255],[41.02872,28.95243],[41.02893,28.95225],[41.02898,28.95221],[41.02913,28.95213],[41.02936,28.95188],[41.02947,28.95178],[41.0296,28.95165],[41.02971,28.95156],[41.0298,28.95148],[41.02986,28.95141],[41.02994,28.95129],[41.02998,28.95121],[41.03002,28.95113],[41.02991,28.95104],[41.0298,28.95096],[41.02949,28.95086],[41.02932,28.95083],[41.02935,28.95066],[41.02909,28.95053],[41.02935,28.95066],[41.02939,28.95041],[41.02947,28.95023],[41.02962,28.94997],[41.02966,28.9499],[41.03006,28.9499],[41.03009,28.94974],[41.03001,28.94948],[41.03006,28.94943],[41.03004,28.94912],[41.03004,28.94883],[41.03006,28.94855],[41.03005,28.94831],[41.02983,28.94837],[41.0296,28.94837],[41.02938,28.94833],[41.02946,28.94808],[41.02948,28.948],[41.02956,28.94765],[41.02942,28.94761],[41.02945,28.94734],[41.02948,28.94727],[41.02983,28.94726],[41.03001,28.94724],[41.03015,28.94723],[41.03028,28.94705],[41.03043,28.94684],[41.03066,28.94638],[41.03074,28.94646],[41.03082,28.94656],[41.03105,28.94643],[41.03123,28.94633],[41.03117,28.94613],[41.03143,28.94628],[41.03169,28.94645],[41.03175,28.94627],[41.0318,28.94614],[41.03209,28.94634],[41.03235,28.94653],[41.03262,28.94671],[41.03271,28.94647],[41.03286,28.94608],[41.03299,28.94578],[41.03324,28.94594],[41.0333,28.94575],[41.03324,28.94594],[41.03299,28.94578],[41.03286,28.94608],[41.03271,28.94647],[41.03262,28.94671],[41.03245,28.94718],[41.03224,28.94766],[41.0326,28.94791],[41.03274,28.94799],[41.03283,28.94787],[41.03286,28.94793],[41.03294,28.94788],[41.03299,28.94801],[41.03314,28.94837],[41.03296,28.94857],[41.03285,28.9487],[41.03277,28.94869],[41.03272,28.94882],[41.03266,28.94895],[41.0326,28.94901],[41.03254,28.94901],[41.03224,28.94894],[41.03218,28.94893],[41.03202,28.94917],[41.03196,28.94912],[41.03182,28.94911],[41.03168,28.94924],[41.03156,28.94939],[41.03163,28.94949],[41.03169,28.94959]],"s5":[[41.03169,28.94959],[41.03165,28.94953],[41.03157,28.94941],[41.03147,28.94952],[41.03141,28.94958],[41.03088,28.95013],[41.0308,28.95018],[41.03074,28.95025],[41.03067,28.95035],[41.0306,28.95047],[41.03052,28.9506],[41.03046,28.95072],[41.03034,28.9506],[41.03026,28.95076],[41.03016,28.95091],[41.03002,28.95113],[41.02998,28.95121],[41.02994,28.95129],[41.02986,28.95141],[41.0298,28.95148],[41.02971,28.95156],[41.02987,28.95176],[41.02991,28.95184],[41.0297,28.95201],[41.02956,28.95214],[41.02947,28.95223],[41.02939,28.9523],[41.02908,28.95262],[41.029,28.95271],[41.02894,28.95277],[41.0289,28.95283],[41.02886,28.9529],[41.02882,28.95298],[41.02878,28.9531],[41.02875,28.9532],[41.02873,28.95331],[41.02869,28.95353],[41.02864,28.95375],[41.02857,28.95403],[41.02868,28.95407],[41.02871,28.95393],[41.02876,28.95396],[41.02894,28.95403],[41.02903,28.95365],[41.02907,28.95348],[41.02913,28.95324],[41.02922,28.95309],[41.02936,28.95296],[41.02943,28.95291],[41.02977,28.95265],[41.02976,28.95252],[41.02981,28.95238],[41.02976,28.95252],[41.02977,28.95265],[41.02943,28.95291],[41.02936,28.95296],[41.02922,28.95309],[41.02913,28.95324],[41.02907,28.95348],[41.02903,28.95365],[41.02894,28.95403],[41.02888,28.95426],[41.02869,28.955],[41.02857,28.95496],[41.0285,28.95494],[41.0284,28.95528],[41.0283,28.95526],[41.02829,28.95534],[41.02821,28.95541],[41.02814,28.95541],[41.02764,28.95524],[41.02756,28.95551],[41.02752,28.9557],[41.02736,28.95597],[41.02722,28.95618],[41.02707,28.95637],[41.02673,28.95675],[41.02678,28.95683],[41.02686,28.95694],[41.02663,28.95719],[41.0268,28.95743],[41.02665,28.95766],[41.0264,28.95805],[41.02625,28.95834],[41.0262,28.95856],[41.02626,28.95865],[41.0263,28.95871],[41.02624,28.95877],[41.02607,28.95888],[41.026,28.95892],[41.02591,28.95896],[41.02562,28.95907],[41.02531,28.95921],[41.02512,28.95929],[41.02493,28.95938],[41.0248,28.95946],[41.02475,28.9595],[41.02468,28.95949],[41.0246,28.95951],[41.02455,28.95955],[41.02452,28.95948],[41.02485,28.95926],[41.02503,28.95918],[41.02518,28.9591],[41.02503,28.95918],[41.02485,28.95926],[41.02452,28.95948],[41.02455,28.95955],[41.02451,28.9596],[41.02447,28.95975],[41.02414,28.96005],[41.02414,28.96015],[41.02385,28.96042],[41.02376,28.96051],[41.02362,28.96064],[41.02355,28.96078],[41.02349,28.96088],[41.02326,28.9612],[41.02323,28.96128],[41.02315,28.96123],[41.02305,28.9612],[41.02299,28.96121],[41.02293,28.96123],[41.0229,28.96132],[41.02278,28.96132],[41.02263,28.96141],[41.02237,28.96169],[41.02231,28.96177],[41.02227,28.96186],[41.02222,28.96191],[41.0222,28.96202],[41.02222,28.96211],[41.02229,28.96222],[41.02237,28.96225],[41.02247,28.96222],[41.02242,28.96225],[41.02233,28.96224],[41.02224,28.96217],[41.02221,28.96207],[41.02221,28.96196],[41.02218,28.96189],[41.02212,28.96199],[41.02209,28.96209],[41.02206,28.96222],[41.02195,28.96227],[41.0217,28.96246],[41.02138,28.96272],[41.02121,28.96287],[41.02127,28.96296],[41.02133,28.96295],[41.0214,28.96308],[41.02059,28.96393],[41.02057,28.96405],[41.02054,28.96415],[41.02043,28.96416],[41.02038,28.9642],[41.02023,28.96446],[41.02023,28.96454],[41.02008,28.96454],[41.02001,28.96459],[41.01992,28.96455],[41.02001,28.96468],[41.02018,28.96484],[41.02022,28.96499],[41.02021,28.96508],[41.02014,28.9652],[41.02008,28.96531],[41.02001,28.96542],[41.01994,28.96554],[41.01985,28.96564],[41.0196,28.96583],[41.01942,28.96609],[41.0194,28.96616],[41.01948,28.96644],[41.01951,28.96654],[41.01954,28.96668],[41.01966,28.96722],[41.0195,28.96748],[41.01946,28.96757],[41.01944,28.96768],[41.01935,28.96764],[41.01894,28.96807],[41.01875,28.96831],[41.01864,28.96839],[41.01857,28.96857],[41.01848,28.96879],[41.01846,28.96887],[41.01841,28.96917],[41.01839,28.96937],[41.01838,28.96956],[41.0183,28.97],[41.01824,28.97051],[41.01828,28.97063],[41.0184,28.97076],[41.01828,28.97097],[41.01823,28.9711],[41.01813,28.97106],[41.01758,28.971],[41.01752,28.971],[41.01748,28.97136],[41.01747,28.97151],[41.01745,28.97195],[41.01738,28.97221],[41.01726,28.97245],[41.01723,28.97253],[41.01719,28.97267],[41.01718,28.97279],[41.01733,28.97282],[41.01739,28.97284],[41.01742,28.97249],[41.01739,28.97284],[41.01738,28.97299],[41.0173,28.97364],[41.01728,28.97381],[41.01727,28.97391],[41.01735,28.97393],[41.01743,28.97395],[41.01752,28.97399],[41.01762,28.97406],[41.01768,28.97411],[41.0176,28.97441],[41.01747,28.97465],[41.0174,28.97482],[41.01733,28.975],[41.0175,28.97512],[41.01758,28.97518]],"s7":[[41.02748,29.0147],[41.02745,29.0151],[41.02738,29.01521],[41.0273,29.01539],[41.02725,29.01534],[41.02718,29.01532],[41.02713,29.01528],[41.02707,29.01517],[41.02692,29.01494],[41.02683,29.0149],[41.02677,29.01499],[41.02665,29.01513],[41.02658,29.01511],[41.02649,29.01518],[41.02658,29.01511],[41.02663,29.01507],[41.02654,29.01495],[41.02649,29.01489],[41.02642,29.01478],[41.02613,29.01436],[41.02601,29.01415],[41.02597,29.01395],[41.02588,29.01353],[41.02586,29.0133],[41.02586,29.01322],[41.02582,29.01302],[41.02573,29.01305],[41.02535,29.01315],[41.02524,29.01318],[41.02518,29.01318],[41.02501,29.01294],[41.02455,29.01232],[41.02459,29.01207],[41.02446,29.01204],[41.02423,29.01198],[41.02434,29.01174],[41.0244,29.01167],[41.02477,29.01127],[41.02503,29.01089],[41.02496,29.01075],[41.02472,29.01029],[41.02463,29.01028],[41.02451,29.01025],[41.02441,29.0102],[41.02437,29.01015],[41.02427,29.01001],[41.02425,29.00989],[41.02424,29.00981],[41.02423,29.00972],[41.02398,29.00939],[41.02432,29.00895],[41.02441,29.00884],[41.02448,29.00881],[41.02414,29.00885],[41.0239,29.00886],[41.02382,29.00888],[41.02372,29.00886],[41.02322,29.00862],[41.02309,29.00859],[41.02274,29.00836],[41.02245,29.00826],[41.02225,29.0082],[41.02195,29.00858],[41.02192,29.00866],[41.02186,29.00901],[41.02173,29.00953],[41.02168,29.00962],[41.02162,29.00973],[41.02159,29.00984],[41.0213,29.00964],[41.02092,29.00945],[41.02077,29.00933],[41.02071,29.00921],[41.0207,29.00913],[41.0207,29.00904],[41.02065,29.00901],[41.02067,29.00879],[41.02068,29.00856],[41.02067,29.00843],[41.02061,29.00833],[41.02057,29.00827],[41.02042,29.00817],[41.02029,29.00818],[41.02016,29.00784],[41.01978,29.00832],[41.01971,29.00821],[41.01967,29.00815],[41.01999,29.00774],[41.02008,29.00764],[41.01999,29.00774],[41.01967,29.00815],[41.01939,29.00853],[41.01928,29.00864],[41.01907,29.00874],[41.01891,29.00874],[41.01879,29.00873],[41.0183,29.00868],[41.01781,29.00868],[41.01773,29.00868],[41.01706,29.00967],[41.0169,29.00981],[41.01655,29.01012],[41.01635,29.01029],[41.01535,29.01078],[41.01433,29.01105],[41.01402,29.01113],[41.01346,29.0112],[41.01303,29.01125],[41.01287,29.01125],[41.01271,29.01122],[41.01238,29.01116],[41.01222,29.01111],[41.01211,29.01105],[41.01187,29.01093],[41.01211,29.01105],[41.01209,29.01112],[41.01205,29.01123],[41.01216,29.01147],[41.01196,29.01172],[41.01181,29.01167],[41.0114,29.01153],[41.01123,29.01151],[41.01112,29.0114],[41.01096,29.01192],[41.01079,29.01194],[41.01076,29.012],[41.01033,29.01204],[41.01016,29.01205],[41.01016,29.01238],[41.01007,29.01239],[41.01007,29.0125],[41.01,29.01254],[41.01012,29.01261],[41.01004,29.0127],[41.01016,29.01273],[41.01004,29.01304],[41.01043,29.01326],[41.00992,29.01457],[41.0103,29.01521],[41.01054,29.01565],[41.01028,29.01628],[41.00985,29.01728],[41.0092,29.01677],[41.00985,29.01728],[41.01031,29.0176],[41.01017,29.01791],[41.01069,29.01829],[41.01046,29.01889],[41.01071,29.01898],[41.01064,29.01916],[41.01054,29.01957],[41.01049,29.01976],[41.01049,29.01994],[41.01031,29.01997],[41.01022,29.02],[41.01009,29.02003],[41.00993,29.02006],[41.00883,29.02032],[41.0086,29.02035],[41.00838,29.02036],[41.00796,29.02037],[41.00762,29.02038],[41.00739,29.02042],[41.00726,29.02047],[41.00712,29.02051],[41.00705,29.02054],[41.00698,29.02063],[41.00688,29.02074],[41.00682,29.02086],[41.0067,29.02093],[41.00661,29.02099],[41.00656,29.02091],[41.00651,29.02088],[41.00637,29.02128],[41.00627,29.02126],[41.00624,29.02102],[41.00583,29.02114],[41.00574,29.02117],[41.00561,29.02123],[41.0054,29.02132],[41.00537,29.02164],[41.00495,29.02181],[41.00464,29.02194],[41.00457,29.0216],[41.00442,29.02167],[41.00395,29.0219],[41.0034,29.02214],[41.00332,29.02218],[41.00317,29.02224],[41.00318,29.02236],[41.00317,29.02253],[41.00287,29.02265],[41.00262,29.02275],[41.00263,29.02285],[41.00187,29.02317],[41.00177,29.02283],[41.00164,29.02288],[41.00142,29.02287],[41.00128,29.0229],[41.00119,29.02293],[41.00109,29.02298],[41.00027,29.02333],[41.00023,29.02345],[40.99995,29.02358],[40.9997,29.02368],[40.99744,29.02422],[40.99635,29.02453],[40.99621,29.02455],[40.99612,29.02457],[40.99599,29.02452],[40.99595,29.02463],[40.99592,29.02471],[40.99583,29.0247],[40.99573,29.02471],[40.99557,29.02473],[40.99482,29.02486],[40.9944,29.02493],[40.99398,29.02497],[40.99363,29.02497],[40.99363,29.02486],[40.99363,29.02473],[40.99363,29.02465],[40.9938,29.02428],[40.99377,29.02418],[40.99336,29.02418],[40.99271,29.02362],[40.9926,29.02351],[40.99263,29.02343],[40.99291,29.02286],[40.99284,29.02281],[40.99281,29.02278]],"s8":[[40.99281,29.02278],[40.99291,29.02286],[40.99264,29.0234],[40.9926,29.02351],[40.99257,29.02357],[40.99251,29.02365],[40.99234,29.02383],[40.99228,29.02388],[40.99223,29.02393],[40.99217,29.02398],[40.99211,29.02403],[40.99204,29.02407],[40.99196,29.0241],[40.9919,29.0241],[40.99184,29.0241],[40.9918,29.02418],[40.99174,29.0243],[40.99171,29.02437],[40.99146,29.02426],[40.99137,29.02423],[40.9912,29.02471],[40.99098,29.02456],[40.99084,29.02446],[40.99072,29.02473],[40.99061,29.02477],[40.99039,29.0246],[40.99021,29.02504],[40.99002,29.02548],[40.98989,29.02579],[40.98982,29.02629],[40.98988,29.02627],[40.98999,29.0263],[40.98988,29.02627],[40.98982,29.02629],[40.98967,29.02709],[40.98956,29.02751],[40.98923,29.02739],[40.98908,29.02736],[40.98879,29.02734],[40.98855,29.02733],[40.98852,29.02751],[40.98845,29.02809],[40.98813,29.02797],[40.988,29.02857],[40.98759,29.0285],[40.98757,29.02857],[40.98734,29.02999],[40.98644,29.02976],[40.98582,29.0297],[40.98545,29.02959],[40.98499,29.02944],[40.98508,29.02903],[40.98538,29.02772],[40.98459,29.02767],[40.98445,29.02761],[40.98435,29.02743],[40.98428,29.02736],[40.98414,29.02738],[40.98391,29.02762],[40.98309,29.02721],[40.9825,29.02699],[40.98217,29.02687],[40.9818,29.02673],[40.98158,29.02667],[40.98159,29.02613],[40.98145,29.02613],[40.98081,29.02612],[40.98049,29.02612],[40.98024,29.02615],[40.98027,29.02622],[40.98024,29.02615],[40.98049,29.02612],[40.98081,29.02612],[40.98145,29.02613],[40.98159,29.02613],[40.98177,29.02613],[40.98186,29.0254],[40.98188,29.02521],[40.98193,29.02476],[40.98202,29.02409],[40.98298,29.02456],[40.98318,29.02466],[40.98389,29.02502],[40.98399,29.02466],[40.98406,29.02438],[40.98411,29.0242],[40.98439,29.02347],[40.98486,29.0238],[40.98542,29.02418],[40.98567,29.02354],[40.98624,29.02391],[40.98635,29.02364],[40.9868,29.02395],[40.98697,29.02407],[40.9872,29.02423],[40.98727,29.02427],[40.98741,29.02393],[40.98754,29.02402],[40.98787,29.02427],[40.98807,29.02394],[40.98834,29.02357],[40.98907,29.02414],[40.98926,29.02373],[40.98968,29.02403],[40.99003,29.02429],[40.9901,29.02427],[40.99036,29.02368],[40.99045,29.02348],[40.99049,29.0234],[40.99052,29.02322],[40.99045,29.02336],[40.99051,29.02336],[40.9906,29.02337],[40.9911,29.02375],[40.9911,29.02383],[40.99105,29.02399],[40.99137,29.02423],[40.99143,29.02425],[40.99171,29.02437],[40.99174,29.0243],[40.9918,29.02418],[40.99183,29.02412],[40.9919,29.0241],[40.99196,29.0241],[40.99202,29.02408],[40.99211,29.02403],[40.99217,29.02398],[40.99223,29.02393],[40.99228,29.02388],[40.99234,29.02383],[40.99248,29.02368],[40.99254,29.02361],[40.9926,29.02351],[40.99263,29.02343],[40.99291,29.02286],[40.99304,29.02258],[40.99307,29.02254]],"s10":[[41.02234,28.97772],[41.02271,28.97737],[41.0228,28.9775],[41.02271,28.97737],[41.02262,28.97724],[41.02291,28.97673],[41.02313,28.97652],[41.02334,28.97631],[41.02316,28.97598],[41.02311,28.97587],[41.02288,28.97546],[41.02292,28.97538],[41.0229,28.97528],[41.02267,28.97493],[41.02285,28.97468],[41.02293,28.97471],[41.02302,28.9748],[41.02316,28.97489],[41.02327,28.9749],[41.02343,28.97491],[41.02365,28.9749],[41.02373,28.97491],[41.02376,28.97521],[41.0243,28.97501],[41.02441,28.97497],[41.02451,28.97493],[41.02452,28.97464],[41.02459,28.97416],[41.02472,28.97419],[41.0249,28.97424],[41.02511,28.9744],[41.02524,28.97452],[41.02529,28.97456],[41.02542,28.97444],[41.02549,28.97436],[41.02553,28.97426],[41.02551,28.97417],[41.02558,28.97409],[41.02564,28.97407],[41.02573,28.97415],[41.02576,28.97424],[41.02585,28.97426],[41.02589,28.97421],[41.02599,28.9741],[41.02608,28.97394],[41.02646,28.97355],[41.02678,28.97375],[41.02691,28.97383],[41.02697,28.97387],[41.0271,28.97394],[41.0272,28.97399],[41.02744,28.97411],[41.02761,28.97419],[41.02757,28.97431],[41.02766,28.9743],[41.02777,28.97431],[41.0279,28.9743],[41.02796,28.97433],[41.02804,28.97434],[41.02806,28.97421],[41.02841,28.97423],[41.02847,28.97423],[41.02847,28.9744],[41.02848,28.97448],[41.02864,28.97454],[41.02895,28.97485],[41.0291,28.97497],[41.02917,28.9748],[41.02933,28.97434],[41.02943,28.97439],[41.02933,28.97434],[41.02917,28.9748],[41.02911,28.97496],[41.02921,28.97507],[41.02931,28.97514],[41.02942,28.97521],[41.02954,28.97527],[41.02965,28.97528],[41.02996,28.97539],[41.03016,28.97547],[41.0304,28.97556],[41.03063,28.97565],[41.03074,28.97536],[41.03086,28.97509],[41.03108,28.97451],[41.03123,28.97416],[41.03123,28.97404],[41.03141,28.97349],[41.03163,28.97365],[41.03191,28.97382],[41.03163,28.97365],[41.03145,28.97353],[41.03123,28.97403],[41.03123,28.97416],[41.03108,28.97451],[41.03088,28.97504],[41.03074,28.97536],[41.03063,28.97565],[41.03088,28.97577],[41.03125,28.9759],[41.03139,28.97601],[41.03183,28.97617],[41.03207,28.97628],[41.03221,28.97635],[41.03247,28.97646],[41.03267,28.97654],[41.03289,28.97665],[41.03317,28.97674],[41.03334,28.97688],[41.03338,28.97695],[41.03346,28.97711],[41.03351,28.97722],[41.03354,28.97731],[41.03357,28.97741],[41.03372,28.97779],[41.03378,28.97795],[41.03389,28.97825],[41.03396,28.97821],[41.03409,28.97856],[41.03435,28.97846],[41.03411,28.97859],[41.03418,28.97874],[41.03433,28.97912],[41.03454,28.97966],[41.03466,28.97993],[41.0349,28.9805],[41.03493,28.98062],[41.03498,28.98075],[41.03505,28.98091],[41.03522,28.9813],[41.03545,28.9819],[41.03557,28.98224],[41.03567,28.98249],[41.03571,28.98254],[41.03574,28.98263],[41.03579,28.98275],[41.03583,28.98285],[41.03587,28.98296],[41.0359,28.98303],[41.03596,28.98316],[41.03605,28.98344],[41.03612,28.98371],[41.03627,28.98434],[41.03623,28.9844],[41.03626,28.98456],[41.03632,28.98476],[41.03651,28.98493],[41.03659,28.98501],[41.03668,28.98504],[41.03677,28.98506],[41.03688,28.98509],[41.03691,28.98502]]};
 
-/* ------------------------------------------------------------------ GEO HELPERS */
-const toRad = d => d*Math.PI/180;
-function hav(a,b){
-  const R=6371000, dLat=toRad(b[0]-a[0]), dLng=toRad(b[1]-a[1]);
-  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;
-  return 2*R*Math.asin(Math.sqrt(s));
-}
-const KX = Math.cos(toRad(41.01))*111320, KY = 110574;
-function projSeg(p,a,b){
-  const ax=(a[1]-p[1])*KX, ay=(a[0]-p[0])*KY, bx=(b[1]-p[1])*KX, by=(b[0]-p[0])*KY;
-  const dx=bx-ax, dy=by-ay, L2=dx*dx+dy*dy;
-  let t = L2 ? -(ax*dx+ay*dy)/L2 : 0; t=Math.max(0,Math.min(1,t));
-  return {d:Math.hypot(ax+t*dx, ay+t*dy), t};
-}
-const fmtKm = km => km<1 ? Math.round(km*1000/10)*10+' m' : km.toFixed(1)+' km';
+/* ---------------------------------------------------------------- helpers */
+const toRad=d=>d*Math.PI/180;
+function hav(a,b){const R=6371000,dLat=toRad(b[0]-a[0]),dLng=toRad(b[1]-a[1]);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(s));}
+const KX=Math.cos(toRad(41.01))*111320, KY=110574;
+function projSeg(p,a,b){const ax=(a[1]-p[1])*KX,ay=(a[0]-p[0])*KY,bx=(b[1]-p[1])*KX,by=(b[0]-p[0])*KY;
+  const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;let t=L2?-(ax*dx+ay*dy)/L2:0;t=Math.max(0,Math.min(1,t));return{d:Math.hypot(ax+t*dx,ay+t*dy),t};}
+const fmtD=km=>km<1?Math.round(km*100)*10+' m':km.toFixed(1)+' km';
+const pad=n=>String(n).padStart(2,'0');
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const gmaps=p=>'https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng;
+const imgSrc=slug=>'img/'+slug+'.webp';
+const ferryGlyph='<svg viewBox="0 0 40 30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 18h34l-4 7H8z"/><path d="M9 18v-5h20v5M14 13V9h9v4"/><path d="M18 9V5" /><path d="M2 28c3-2 6 2 9 0s6 2 9 0 6 2 9 0 6 2 9 0" stroke-width="1.1"/></svg>';
 
-/* ------------------------------------------------------------------ STATE */
-let segs=[], totalKm=0, walkKm=0, allPlaces=[], lastKm=null, lastPos=null, follow=false, firstFix=true;
-SECTIONS.forEach((s,i)=>{ s.n=i+1; s.coords=s.via.slice(); });
-let num=0;
-SECTIONS.forEach(s=>s.places.forEach(p=>{ p.id=++num; p.sec=s; allPlaces.push(p); }));
+/* ---------------------------------------------------------------- state */
+let segs=[],totalKm=0,walkKm=0,allPlaces=[],lastKm=null,lastPos=null,follow=false,firstFix=true,currentSec=null,filter='all',curKm=0;
+SECTIONS.forEach((s,i)=>{s.n=i+1;s.coords=ROUTES[s.id]||s.via.slice();});
+let num=0;SECTIONS.forEach(s=>s.places.forEach(p=>{p.id=++num;p.sec=s;allPlaces.push(p);}));
+let walkN=0;SECTIONS.forEach(s=>{if(s.mode==='walk')s.wn=++walkN;});
 
 function buildIndex(){
-  segs=[]; let km=0; walkKm=0;
-  SECTIONS.forEach(s=>{
-    s.km0=km; const c=s.coords;
-    for(let i=0;i<c.length-1;i++){ const len=hav(c[i],c[i+1])/1000; segs.push({s,a:c[i],b:c[i+1],km0:km,len}); km+=len; }
-    s.km1=km; s.len=s.km1-s.km0; if(s.mode==='walk') walkKm+=s.len;
-  });
+  segs=[];let km=0;walkKm=0;
+  SECTIONS.forEach(s=>{s.km0=km;const c=s.coords;
+    for(let i=0;i<c.length-1;i++){const len=hav(c[i],c[i+1])/1000;segs.push({s,a:c[i],b:c[i+1],km0:km,len});km+=len;}
+    s.km1=km;s.len=s.km1-s.km0;if(s.mode==='walk'&&s.time!=='optional')walkKm+=s.len;});
   totalKm=km;
-  allPlaces.forEach(p=>{
-    let best=null;
-    segs.forEach(g=>{ if(g.s!==p.sec) return; const r=projSeg([p.lat,p.lng],g.a,g.b); if(!best||r.d<best.d) best={d:r.d,km:g.km0+r.t*g.len}; });
-    p.km=best?best.km:p.sec.km0; p.off=best?best.d:0;
-  });
+  allPlaces.forEach(p=>{let best=null;
+    segs.forEach(g=>{if(g.s!==p.sec)return;const r=projSeg([p.lat,p.lng],g.a,g.b);if(!best||r.d<best.d)best={d:r.d,km:g.km0+r.t*g.len};});
+    p.km=best?best.km:p.sec.km0;});
 }
 
-/* ------------------------------------------------------------------ RENDER LIST */
-const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
-const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-function gmaps(p){ return 'https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng; }
-
+/* ---------------------------------------------------------------- list */
+const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="m6 9 6 6 6-6"/></svg>';
+function renderFilters(){
+  const opts=[['all','All']].concat(Object.entries(KINDS).map(([k,v])=>[k,v.long]));
+  document.getElementById('filters').innerHTML=opts.map(([k,l])=>`<button data-filter="${k}" aria-pressed="${filter===k}">${k==='all'?'':`<i class="glyph k-${k}" style="--k:${KINDS[k].c}"></i>`}${l}</button>`).join('');
+}
 function renderList(){
-  const root=document.getElementById('sections');
-  root.innerHTML = SECTIONS.map(s=>`
-    <section class="sec ${s.mode==='ferry'?'ferry':''}" id="sec-${s.id}" style="--c:${s.color}">
+  document.getElementById('sections').innerHTML=SECTIONS.map(s=>{
+    const isF=s.mode==='ferry';
+    return `<section class="sec" id="sec-${s.id}">
+      <img class="banner" src="${imgSrc(s.id)}" alt="" loading="lazy" onerror="this.remove()">
       <div class="sechead">
-        <div class="secnum">${s.mode==='ferry'?'⛴':s.n}</div>
-        <div><h2>${esc(s.title)}</h2><div class="meta" id="meta-${s.id}"></div></div>
+        <div class="secnum tn">${isF?ferryGlyph:pad(s.wn)}</div>
+        <div><h2>${esc(s.title)}</h2><div class="meta tn"><span id="meta-${s.id}"></span><span class="here-tag">You're here</span></div></div>
       </div>
       <p class="secdesc">${esc(s.desc)}</p>
-      <div class="cards">
-      ${s.places.map(p=>{const k=KINDS[p.kind]; return `
-        <details class="card k-${p.kind}" id="p-${p.id}" style="--k:${k.c}">
-          <summary>
-            <span class="pnum"><span>${p.id}</span></span>
-            <span class="ptitle">${esc(p.name)}<small>${esc(p.short)}</small></span>
-            <span class="badge">${k.label}</span>${chev}
-          </summary>
+      <div class="cards">${s.places.map(p=>{const k=KINDS[p.kind];return `
+        <details class="card k-${p.kind}" id="p-${p.id}" data-kind="${p.kind}" style="--k:${k.c}">
+          <summary><span class="mk k-${p.kind} tn" style="--k:${k.c}"><span>${p.id}</span></span>
+            <span class="ptitle">${esc(p.name)}<small>${esc(p.short)}</small></span>${chev}</summary>
           <div class="body">
+            ${p.img?`<img data-src="${imgSrc(p.img)}" alt="" onerror="this.remove()">`:''}
             ${p.body.split('\n\n').map(t=>`<p>${esc(t)}</p>`).join('')}
-            ${p.tip?`<p class="tip">${esc(p.tip)}</p>`:''}
-            <div class="actions">
-              <button data-show="${p.id}">Show on map</button>
-              <a href="${gmaps(p)}" target="_blank" rel="noopener">Google Maps ↗</a>
-              <span class="ondist" id="d-${p.id}"></span>
-            </div>
-          </div>
-        </details>`;}).join('')}
-      </div>
-    </section>`).join('');
+            ${p.tip?`<p class="tip"><b>Tip</b>${esc(p.tip)}</p>`:''}
+            <div class="actions"><button class="pri" data-show="${p.id}">Show on map</button>
+              <a href="${gmaps(p)}" target="_blank" rel="noopener">Google Maps ↗</a><span class="away tn" id="d-${p.id}"></span></div>
+          </div></details>`;}).join('')}</div>
+    </section>`;}).join('');
+  document.querySelectorAll('details.card').forEach(d=>d.addEventListener('toggle',()=>{
+    if(d.open){const im=d.querySelector('img[data-src]');if(im){im.src=im.dataset.src;im.removeAttribute('data-src');}}
+  }));
   updateMeta();
 }
 function updateMeta(){
-  SECTIONS.forEach(s=>{
-    const el=document.getElementById('meta-'+s.id); if(!el) return;
-    el.textContent = s.time + ' · ' + (s.mode==='ferry' ? '~'+s.ferryMins+' min ferry' : fmtKm(s.len)+' walk') + ' · stops '+s.places[0].id+(s.places.length>1?'–'+s.places[s.places.length-1].id:'');
-  });
-  document.getElementById('totals').textContent = `About ${walkKm.toFixed(0)} km of walking (plus optional detours) and two ferries.`;
+  SECTIONS.forEach(s=>{const el=document.getElementById('meta-'+s.id);if(!el)return;
+    const a=s.places[0].id,b=s.places[s.places.length-1].id;
+    el.textContent=`${s.time} · ${s.mode==='ferry'?'~'+s.ferryMins+' min by ferry':fmtD(s.len)+' on foot'} · ${a===b?'stop '+a:'stops '+a+'–'+b}`;});
+  document.getElementById('stKm').textContent=Math.round(walkKm);
+  document.getElementById('stStops').textContent=allPlaces.length;
+  const fk=document.getElementById('ftKm');if(fk)fk.textContent=Math.round(walkKm);
+  document.getElementById('dkTotal').textContent='of '+totalKm.toFixed(1)+' km';
+  renderStrip();
+}
+function renderStrip(){
+  document.getElementById('strip').innerHTML=SECTIONS.map(s=>{
+    let cls=s.mode==='ferry'?'ferry':'';let fill='';
+    if(curKm>=s.km1-0.01)cls+=' done';
+    else if(curKm>s.km0&&curKm<s.km1)fill=`<b style="width:${((curKm-s.km0)/s.len*100).toFixed(1)}%"></b>`;
+    return `<i class="${cls}" style="flex:${Math.max(s.len,.35).toFixed(2)}" title="${esc(s.title)}">${fill}</i>`;}).join('');
 }
 
-/* ------------------------------------------------------------------ MAP */
-let map, lines={}, markers={}, meMarker, meCircle, baseLayers, layerIdx=0;
+/* ---------------------------------------------------------------- map */
+let map,lines={},markers={},meMarker,meCircle,layers,layerIdx=0,paperDiv;
 function initMap(){
-  if(typeof L==='undefined'){ document.getElementById('map').innerHTML='<div style="padding:20px">The map library didn\'t load, so check your connection. The guide below still works.</div>'; return; }
-  map=L.map('map',{zoomControl:false, attributionControl:true});
+  if(typeof L==='undefined'){document.getElementById('map').innerHTML='<div style="padding:20px">The map library didn\'t load. Check your connection; the guide below still works.</div>';return;}
+  map=L.map('map',{zoomControl:false,attributionControl:true,minZoom:11});
   L.control.zoom({position:'bottomleft'}).addTo(map);
-  const attrOSM='© <a href="https://www.openstreetmap.org/copyright">OSM</a>';
-  baseLayers=[
-    {name:'Voyager', layer:L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,attribution:attrOSM+' © <a href="https://carto.com/attributions">CARTO</a>'})},
-    {name:'Light', layer:L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,attribution:attrOSM+' © CARTO'})},
-    {name:'Satellite', layer:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery © Esri'})}
+  map.attributionControl.setPrefix(false);
+  const esri=(svc,cls)=>L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`,{maxZoom:19,className:cls,attribution:'Tiles © <a href="https://www.esri.com">Esri</a> &amp; contributors, incl. © OpenStreetMap'});
+  layers=[
+    {name:'Parchment',ls:[esri('World_Topo_Map','tiles-parchment')]},
+    {name:'Plain',ls:[esri('World_Street_Map','')]},
+    {name:'Satellite',ls:[L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,className:'tiles-sat',attribution:'Imagery © Esri'})]}
   ];
-  try{ const saved=+localStorage.getItem('istwalk-layer'); if(saved>=0&&saved<baseLayers.length) layerIdx=saved; }catch(e){}
-  baseLayers[layerIdx].layer.addTo(map);
+  const pp=map.createPane('paper');pp.style.zIndex=350;pp.style.pointerEvents='none';
+  paperDiv=L.DomUtil.create('div','paper-tex',pp);
+  map.createPane('orn').style.zIndex=380;
+  try{const v=+localStorage.getItem('istwalk-layer3');if(v>=0&&v<layers.length)layerIdx=v;}catch(e){}
+  layers[layerIdx].ls.forEach(l=>l.addTo(map));
 
   SECTIONS.forEach(s=>{
     const isF=s.mode==='ferry';
-    const casing=L.polyline(s.coords,{color:'#fff',weight:isF?6:8,opacity:.9,interactive:false});
-    const line=L.polyline(s.coords,{color:s.color,weight:isF?3.5:4.5,opacity:.95,dashArray:isF?'2 9':null,lineCap:'round'});
-    line.bindTooltip((isF?'⛴ ':s.n+'. ')+s.title,{sticky:true});
+    const glow=L.polyline(s.coords,{color:'#B9CF7A',weight:16,opacity:0,interactive:false,lineCap:'round',lineJoin:'round'});
+    const casing=L.polyline(s.coords,{color:'#FBF8F0',weight:isF?5:8,opacity:isF?.7:.9,interactive:false,lineJoin:'round'});
+    const line=L.polyline(s.coords,isF?{color:'#0F2A1C',weight:2.5,opacity:.85,dashArray:'1 8',lineCap:'round'}
+                                     :{color:'#07703E',weight:4,opacity:1,lineCap:'round',lineJoin:'round'});
+    line.bindTooltip(isF?s.title:pad(s.wn)+' · '+s.title,{sticky:true});
     line.on('click',()=>scrollToSection(s));
-    casing.addTo(map); line.addTo(map);
-    lines[s.id]={casing,line};
+    glow.addTo(map);casing.addTo(map);line.addTo(map);
+    lines[s.id]={glow,casing,line};
+    if(isF){
+      lines[s.id].boat=L.marker(mid(s.coords),{interactive:false,icon:L.divIcon({className:'',iconSize:[30,20],iconAnchor:[15,12],
+        html:`<div class="boat" style="color:#0F2A1C">${ferryGlyph}</div>`}),pane:'orn'}).addTo(map);
+    } else {
+      L.marker(s.coords[0],{icon:L.divIcon({className:'',iconSize:[24,18],iconAnchor:[-4,22],html:`<div class="secpin">${pad(s.wn)}</div>`}),interactive:false,zIndexOffset:-100}).addTo(map);
+    }
   });
   allPlaces.forEach(p=>{
     const k=KINDS[p.kind];
-    const icon=L.divIcon({className:'',html:`<div class="pin k-${p.kind}" style="--k:${k.c}"><span>${p.id}</span></div>`,iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-12]});
+    const icon=L.divIcon({className:'',html:`<div class="pin k-${p.kind}" style="--k:${k.c}"><span>${p.id}</span></div>`,iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-12]});
     const m=L.marker([p.lat,p.lng],{icon,riseOnHover:true}).addTo(map);
-    m.bindPopup(`<b>${p.id}. ${esc(p.name)}</b><br>${esc(p.short)}<br><button class="pop-more" data-open="${p.id}">Read more ↓</button>`);
+    m.bindPopup(()=>`<div class="pop">${p.img?`<img src="${imgSrc(p.img)}" alt="" onerror="this.remove()">`:''}<div class="pt"><b>${p.id} · ${esc(p.name)}</b><div class="ps">${esc(p.short)}</div><button class="pop-more" data-open="${p.id}">Read more</button></div></div>`,{maxWidth:220,minWidth:220,autoPanPadding:[20,20]});
     markers[p.id]=m;
   });
-  fitAll();
+  addOrnaments();
+  map.on('popupopen',e=>{const b=e.popup.getElement().querySelector('.pop-more');
+    if(b)L.DomEvent.on(b,'click',ev=>{L.DomEvent.stop(ev);map.closePopup();openCard(+b.dataset.open);});});
+  map.on('move zoomend resize viewreset',placePaper);
+  map.on('zoomend',zoomClasses);
   map.on('dragstart',()=>setFollow(false));
-  map.on('popupopen',e=>{
-    const btn=e.popup.getElement().querySelector('.pop-more');
-    if(btn) L.DomEvent.on(btn,'click',ev=>{ L.DomEvent.stop(ev); map.closePopup(); openCard(+btn.dataset.open); });
-  });
+  fitAll();placePaper();zoomClasses();
 }
-function fitAll(){ if(!map) return; const b=L.latLngBounds([]); SECTIONS.forEach(s=>s.coords.forEach(c=>b.extend(c))); map.fitBounds(b,{padding:[20,20]}); }
-function redrawLines(){ if(!map) return; SECTIONS.forEach(s=>{ lines[s.id].casing.setLatLngs(s.coords); lines[s.id].line.setLatLngs(s.coords); }); }
+function mid(c){let L0=0;for(let i=0;i<c.length-1;i++)L0+=hav(c[i],c[i+1]);let acc=0;
+  for(let i=0;i<c.length-1;i++){const l=hav(c[i],c[i+1]);if(acc+l>=L0/2){const t=(L0/2-acc)/l;return[c[i][0]+t*(c[i+1][0]-c[i][0]),c[i][1]+t*(c[i+1][1]-c[i][1])];}acc+=l;}return c[0];}
+function placePaper(){if(!map||!paperDiv)return;const s=map.getSize();const tl=map.containerPointToLayerPoint([-40,-40]);
+  L.DomUtil.setPosition(paperDiv,tl);paperDiv.style.width=(s.x+80)+'px';paperDiv.style.height=(s.y+80)+'px';}
+function zoomClasses(){const z=map.getZoom(),c=map.getContainer();c.classList.toggle('zhi',z>=16);c.classList.toggle('zlo',z<=13);}
+function addOrnaments(){
+  const sepia='#5B4128';
+  const serpent=`<svg width="92" height="40" viewBox="0 0 120 52" fill="none" stroke="${sepia}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 36c5-14 15-14 20 0" fill="#B9CF7A" fill-opacity=".55"/><path d="M38 36c6-17 18-17 24 0" fill="#B9CF7A" fill-opacity=".55"/><path d="M70 36c5-12 14-12 18 0" fill="#B9CF7A" fill-opacity=".55"/>
+    <path d="M88 36c1-11 7-19 15-19 6 0 9 3 9 6s-4 4-8 3" fill="#B9CF7A" fill-opacity=".55"/><path d="M111 24l6 2M111 24l5-2"/><path d="M96 18l-3-6M100 17l1-6"/>
+    <circle cx="106" cy="21" r="1.1" fill="${sepia}"/><path d="M15 31l2 2M45 28l2 2M75 30l2 2" stroke-width="1"/>
+    <path d="M2 40c8 4 16-4 24 0s16 4 24 0 16-4 24 0 16 4 24 0 12-3 18-1" stroke-width="1.1" opacity=".7"/></svg>`;
+  const ship=`<svg width="44" height="40" viewBox="0 0 44 40" fill="none" stroke="${sepia}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M6 28h32l-5 6H11z" fill="#FBF8F0"/><path d="M22 28V5"/><path d="M22 7c7 3 9 9 8 17H22z" fill="#FBF8F0"/><path d="M22 10c-6 3-8 8-7 14h7z" fill="#B9CF7A" fill-opacity=".6"/>
+    <path d="M22 5l6-1-1 3"/><path d="M2 37c4-2 7 2 11 0s7 2 11 0 7 2 11 0 6 2 8 1" stroke-width="1"/></svg>`;
+  const add=(ll,html,cls,anchor)=>L.marker(ll,{pane:'orn',interactive:false,keyboard:false,icon:L.divIcon({className:'',html:`<div class="orn ${cls}">${html}</div>`,iconSize:null,iconAnchor:anchor||[0,0]})}).addTo(map);
+  add([41.0345,28.9555],'<span style="display:inline-block;transform:rotate(-28deg)">The Golden Horn</span>','orn-water orn-small',[50,8]);
+  add([41.0435,29.0125],'<span style="display:inline-block;transform:rotate(-62deg)">Bosphorus</span>','orn-water',[34,8]);
+  add([40.9885,28.9700],'Sea of Marmara','orn-water',[50,8]);
+  add([41.0060,28.9440],'Europe','orn-land',[40,10]);
+  add([41.0140,29.0380],'Asia','orn-land',[24,10]);
+  add([40.9765,28.9930],serpent,'orn-small',[46,20]);
+  add([40.9985,28.9905],ship,'orn-small',[22,20]);
+}
+function fitAll(){if(!map)return;const b=L.latLngBounds([]);SECTIONS.forEach(s=>s.coords.forEach(c=>b.extend(c)));map.fitBounds(b,{padding:[18,18]});}
+function redrawLines(){if(!map)return;SECTIONS.forEach(s=>{const l=lines[s.id];l.glow.setLatLngs(s.coords);l.casing.setLatLngs(s.coords);l.line.setLatLngs(s.coords);if(l.boat)l.boat.setLatLng(mid(s.coords));});}
+function highlightSection(sec){if(!map)return;SECTIONS.forEach(s=>lines[s.id].glow.setStyle({opacity:s===sec?.55:0}));}
+function applyFilter(){
+  document.querySelectorAll('details.card').forEach(d=>d.classList.toggle('hide',filter!=='all'&&d.dataset.kind!==filter));
+  allPlaces.forEach(p=>{const el=markers[p.id]&&markers[p.id].getElement();if(el)el.firstChild.classList.toggle('dim',filter!=='all'&&p.kind!==filter);});
+  renderFilters();
+}
 
-/* ------------------------------------------------------------------ UI ACTIONS */
+/* ---------------------------------------------------------------- UI */
 const app=document.getElementById('app');
-function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),1400); }
-function openCard(id){
-  const el=document.getElementById('p-'+id); if(!el) return;
-  app.classList.remove('bigmap'); document.getElementById('btnSize').classList.remove('on');
-  el.open=true; setTimeout(()=>{ el.scrollIntoView({behavior:'smooth',block:'start'}); if(map) map.invalidateSize(); },60);
-}
-function showOnMap(id){
-  const p=allPlaces.find(x=>x.id==id); if(!p||!map) return;
-  setFollow(false); map.setView([p.lat,p.lng],17); markers[p.id].openPopup();
-}
-function scrollToSection(s){ const el=document.getElementById('sec-'+s.id); if(el){ app.classList.remove('bigmap'); el.scrollIntoView({behavior:'smooth',block:'start'}); } }
-
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),1500);}
+function openCard(id){const el=document.getElementById('p-'+id);if(!el)return;
+  if(el.classList.contains('hide')){filter='all';applyFilter();}
+  app.classList.remove('bigmap');document.getElementById('btnSize').classList.remove('on');
+  el.open=true;setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'start'});if(map)map.invalidateSize();},80);}
+function showOnMap(id){const p=allPlaces.find(x=>x.id==id);if(!p||!map)return;setFollow(false);map.setView([p.lat,p.lng],17);setTimeout(()=>markers[p.id].openPopup(),250);}
+function scrollToSection(s){const el=document.getElementById('sec-'+s.id);if(el){app.classList.remove('bigmap');document.getElementById('btnSize').classList.remove('on');el.scrollIntoView({behavior:'smooth',block:'start'});}}
 document.addEventListener('click',e=>{
-  const o=e.target.closest('[data-open]'); if(o){ openCard(+o.dataset.open); return; }
-  const sh=e.target.closest('[data-show]'); if(sh){ showOnMap(+sh.dataset.show); return; }
+  const o=e.target.closest('[data-open]');if(o){openCard(+o.dataset.open);return;}
+  const sh=e.target.closest('[data-show]');if(sh){showOnMap(+sh.dataset.show);return;}
+  const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;applyFilter();return;}
 });
-document.getElementById('btnFit').onclick=()=>{ setFollow(false); fitAll(); };
-document.getElementById('btnLayer').onclick=()=>{
-  if(!map) return; map.removeLayer(baseLayers[layerIdx].layer); layerIdx=(layerIdx+1)%baseLayers.length;
-  baseLayers[layerIdx].layer.addTo(map); baseLayers[layerIdx].layer.bringToBack(); toast('Map style: '+baseLayers[layerIdx].name);
-  try{ localStorage.setItem('istwalk-layer',layerIdx); }catch(e){}
-};
-document.getElementById('btnSize').onclick=function(){
-  app.classList.toggle('bigmap'); this.classList.toggle('on');
-  setTimeout(()=>map&&map.invalidateSize(),280);
-};
-document.getElementById('btnLocate').onclick=()=>{
-  if(!lastPos){ startGeo(true); toast('Finding you…'); return; }
-  setFollow(!follow); if(follow){ map.setView(lastPos, Math.max(map.getZoom(),16)); toast('Following you'); }
-};
-document.getElementById('status').onclick=()=>{ if(currentSec) scrollToSection(currentSec); };
-function setFollow(v){ follow=v; document.getElementById('btnLocate').classList.toggle('on',v); }
+document.getElementById('btnFit').onclick=()=>{setFollow(false);fitAll();};
+document.getElementById('btnLayer').onclick=()=>{if(!map)return;layers[layerIdx].ls.forEach(l=>map.removeLayer(l));
+  layerIdx=(layerIdx+1)%layers.length;layers[layerIdx].ls.forEach(l=>{l.addTo(map);if(l.options.pane==='tilePane')l.bringToBack();});
+  toast(layers[layerIdx].name);try{localStorage.setItem('istwalk-layer3',layerIdx);}catch(e){}};
+document.getElementById('btnSize').onclick=function(){app.classList.toggle('bigmap');this.classList.toggle('on');setTimeout(()=>map&&map.invalidateSize(),280);};
+document.getElementById('btnLocate').onclick=()=>{if(!lastPos){startGeo();toast('Finding you…');return;}
+  setFollow(!follow);if(follow){map.setView(lastPos,Math.max(map.getZoom(),16));toast('Following you');}};
+document.getElementById('dock').onclick=()=>{if(currentSec)scrollToSection(currentSec);};
+function setFollow(v){follow=v;document.getElementById('btnLocate').classList.toggle('on',v);}
 
-/* ------------------------------------------------------------------ LOCATION */
-let watchId=null, currentSec=null;
+/* ---------------------------------------------------------------- location */
+let watchId=null;
 function startGeo(){
-  if(!('geolocation' in navigator)){ setStatus('off','Location not available','This browser doesn\'t share location. Use the Google Maps buttons to navigate.'); return; }
-  if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+  if(!('geolocation' in navigator)){setDock('off','—','No location here','This browser won\'t share your location. The Google Maps buttons still work.');return;}
+  if(watchId!==null)navigator.geolocation.clearWatch(watchId);
   watchId=navigator.geolocation.watchPosition(onPos,onErr,{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
 }
-function onErr(err){
-  if(lastPos) return;
-  if(err.code===1) setStatus('off','Location blocked','Chrome may block location for files opened from Downloads. The Google Maps buttons on each card still show where you are.');
-  else setStatus('off','Can\'t get a GPS fix yet','Still trying. Being outdoors helps.');
-}
+function onErr(err){if(lastPos)return;
+  if(err.code===1)setDock('off','—','Location blocked','Tap the icon left of the address bar and allow location for this site.');
+  else setDock('off','··','No GPS fix yet','Still listening for satellites. Open sky helps.');}
 function onPos(pos){
-  const ll=[pos.coords.latitude,pos.coords.longitude]; lastPos=ll;
+  const ll=[pos.coords.latitude,pos.coords.longitude];lastPos=ll;
   if(map){
     if(!meMarker){
-      meCircle=L.circle(ll,{radius:pos.coords.accuracy,color:'#2a7bf6',weight:1,fillOpacity:.08,interactive:false}).addTo(map);
-      meMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[18,18],iconAnchor:[9,9]}),zIndexOffset:1000}).addTo(map);
-    } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(pos.coords.accuracy); }
-    if(firstFix){ firstFix=false; setFollow(true); map.setView(ll,16); }
-    else if(follow) map.panTo(ll,{animate:true});
+      meCircle=L.circle(ll,{radius:pos.coords.accuracy,color:'#07703E',weight:1,fillColor:'#B9CF7A',fillOpacity:.15,interactive:false}).addTo(map);
+      meMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[16,16],iconAnchor:[8,8]}),zIndexOffset:1000,interactive:false}).addTo(map);
+    }else{meMarker.setLatLng(ll);meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);}
+    if(firstFix){firstFix=false;setFollow(true);map.setView(ll,16);}else if(follow)map.panTo(ll,{animate:true});
   }
   updateProgress();
 }
 function updateProgress(){
-  if(!lastPos||!segs.length) return;
-  const res=segs.map(g=>{ const r=projSeg(lastPos,g.a,g.b); return {g,d:r.d,km:g.km0+r.t*g.len}; });
+  if(!lastPos||!segs.length)return;
+  const res=segs.map(g=>{const r=projSeg(lastPos,g.a,g.b);return{g,d:r.d,km:g.km0+r.t*g.len};});
   const minD=Math.min(...res.map(r=>r.d));
-  let cands=res.filter(r=>r.d<=minD+40);
-  let pick = lastKm===null ? cands.reduce((a,b)=>a.d<=b.d?a:b) : cands.reduce((a,b)=>Math.abs(a.km-lastKm)<=Math.abs(b.km-lastKm)?a:b);
-  const sec=pick.g.s;
+  const c=res.filter(r=>r.d<=minD+40);
+  const pick=lastKm===null?c.reduce((a,b)=>a.d<=b.d?a:b):c.reduce((a,b)=>Math.abs(a.km-lastKm)<=Math.abs(b.km-lastKm)?a:b);
+  const sec=pick.g.s;currentSec=sec;
   document.querySelectorAll('.sec.here').forEach(e=>e.classList.remove('here'));
+  const numTxt=sec.mode==='ferry'?'⛴':pad(sec.wn);
   if(minD>250){
-    lastKm=null; currentSec=sec;
-    setStatus('off',`${fmtKm(minD/1000)} from the route`,`Nearest point is on ${sec.mode==='ferry'?'the ferry':'section '+sec.n}: ${sec.title}`);
-    document.querySelector('.progress i').style.width='0%';
-  } else {
-    lastKm=pick.km; currentSec=sec;
+    lastKm=null;highlightSection(null);
+    setDock('off',numTxt,`${fmtD(minD/1000)} off the line`,`Explorer's prerogative. The nearest bit of route is ${sec.mode==='ferry'?'the ferry':'section '+pad(sec.wn)}.`);
+  }else{
+    lastKm=pick.km;curKm=pick.km;highlightSection(sec);
     document.getElementById('sec-'+sec.id).classList.add('here');
     const next=allPlaces.filter(p=>p.km>pick.km+0.03).sort((a,b)=>a.km-b.km)[0];
-    const done=pick.km/totalKm*100;
-    setStatus('live', sec.mode==='ferry' ? 'On the ferry ⛴' : `On route · section ${sec.n}`,
-      next ? `Next: ${next.id}. ${next.name} · ${fmtKm(next.km-pick.km)} along the route` : 'You\'ve made it. That\'s the whole loop!');
-    document.querySelector('.progress i').style.width=done.toFixed(1)+'%';
+    setDock('',numTxt,sec.title,next?`Next: ${next.id} ${next.name} · ${fmtD(next.km-pick.km)}`:'Loop complete. Bravo. Baklava is in order.');
   }
-  allPlaces.forEach(p=>{ const el=document.getElementById('d-'+p.id); if(el) el.textContent = fmtKm(hav(lastPos,[p.lat,p.lng])/1000)+' away'; });
+  document.querySelector('.dk-km b').textContent=(lastKm===null?curKm:pick.km).toFixed(1);
+  renderStrip();
+  allPlaces.forEach(p=>{const el=document.getElementById('d-'+p.id);if(el)el.textContent=fmtD(hav(lastPos,[p.lat,p.lng])/1000)+' away';});
 }
-function setStatus(cls,main,sub){
-  const st=document.getElementById('status'); st.className=cls;
-  st.querySelector('.st-main').textContent=main; st.querySelector('.st-sub').textContent=sub;
-}
+function setDock(cls,n,t,s){const d=document.getElementById('dock');d.className=cls;
+  d.querySelector('.dk-num').textContent=n;d.querySelector('.dk-t').textContent=t;d.querySelector('.dk-s').textContent=s;}
 
-/* ------------------------------------------------------------------ ROUTING (snap legs to streets) */
-const CACHE='istwalk-route-v1-';
-async function snapLeg(s){
-  try{ const c=localStorage.getItem(CACHE+s.id); if(c){ s.coords=JSON.parse(c); return 'cache'; } }catch(e){}
-  const coordStr=s.via.map(([la,ln])=>ln.toFixed(5)+','+la.toFixed(5)).join(';');
-  const url='https://routing.openstreetmap.de/routed-foot/route/v1/driving/'+coordStr+'?overview=full&geometries=geojson';
-  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),10000);
-  try{
-    const r=await fetch(url,{signal:ctrl.signal}); clearTimeout(t);
-    if(!r.ok) return 'fail';
-    const j=await r.json();
-    if(j.code!=='Ok'||!j.routes||!j.routes[0]) return 'fail';
-    const pts=j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]);
-    let viaLen=0; for(let i=0;i<s.via.length-1;i++) viaLen+=hav(s.via[i],s.via[i+1]);
-    if(j.routes[0].distance>viaLen*1.9+300) return 'odd';
-    s.coords=pts;
-    try{ localStorage.setItem(CACHE+s.id,JSON.stringify(pts.map(p=>[+p[0].toFixed(5),+p[1].toFixed(5)]))); }catch(e){}
-    return 'ok';
-  }catch(e){ clearTimeout(t); return 'fail'; }
-}
-async function snapAll(){
-  let ok=0, n=0;
-  for(const s of SECTIONS){
-    if(s.mode!=='walk') continue; n++;
-    const r=await snapLeg(s); if(r==='ok'||r==='cache') ok++;
-    buildIndex(); redrawLines(); updateMeta(); updateProgress();
-  }
-  document.getElementById('routenote').textContent = ok===n ? 'The route follows real streets, snapped with OpenStreetMap walking directions.'
-    : ok ? `${ok} of ${n} walking sections are snapped to streets. The rest are shown as approximate lines.`
-    : 'The route is shown as approximate lines (street-snapping unavailable). Follow the streets near the line.';
-}
-
-/* ------------------------------------------------------------------ GO */
-buildIndex();
-renderList();
-initMap();
-startGeo();
-snapAll();
+/* ---------------------------------------------------------------- go */
+buildIndex();renderFilters();renderList();initMap();startGeo();
 </script>
 </body>
 </html>
